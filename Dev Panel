@@ -106,7 +106,7 @@ local images = {
     HoneyPot="rbxassetid://84825411467075",
     Microwave="rbxassetid://96371279864903",
     Mug="rbxassetid://123210930333739",
-    Scanner="rbxassetid://11374263930",
+    Scanner="rbxassetid://123210930333739",
     Buddy="rbxassetid://96164691124017",
     Lotus="rbxassetid://121905075599624",
     LotusPetal="rbxassetid://82584389669499",
@@ -722,8 +722,7 @@ do
                 {"MovementCompDebugEnable", "Enable path vis for 3d npcs", Color3.fromRGB(255,198,84)},
                 {"MovementCompDebugDisable", "Disable path vis for 3d npcs", Color3.fromRGB(230,88,255)},
                 {"SpawnBranches", "make branches (experimental)", Color3.fromRGB(230,88,255)},
-                {"LiveReplaceRoom", "live replace a room", Color3.fromRGB(230,88,255)},
-                {"ArchivesTimeFastforward", "Toggle Archives time fastforwarding", Color3.fromRGB(234,214,115)}
+                {"LiveReplaceRoom", "live replace a room", Color3.fromRGB(230,88,255)}
             }) do
                 local ok, err = pcall(function() dev:AddButton(cmd[1], cmd[2], cmd[3]):SetActive(true) end)
                 if not ok then warn("Debug command failed:", cmd[1], err) end
@@ -733,6 +732,7 @@ do
                 dev:AddButton("SkipToRoomNumber", "Skip", Color3.fromRGB(234,255,249)):SetActive(true):AddParameter(roomField)
             end)
             if not ok then warn("SkipToRoom field failed:", err) end
+            dev:AddButton("ArchivesTimeFastforward", "Toggle Archives time fastforwarding", Color3.fromRGB(234,214,115)):SetActive(true)
             local debugTab = tabs:FindFirstChild("Debug")
             if not debugTab then
                 debugTab = tabTemplate:Clone()
