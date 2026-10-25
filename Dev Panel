@@ -1,4 +1,3 @@
-
 if not game:IsLoaded() then game.Loaded:Wait() end
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
@@ -107,6 +106,7 @@ local images = {
     HoneyPot="rbxassetid://84825411467075",
     Microwave="rbxassetid://96371279864903",
     Mug="rbxassetid://123210930333739",
+    Scanner="rbxassetid://123210930333739",
     Buddy="rbxassetid://96164691124017",
     Lotus="rbxassetid://121905075599624",
     LotusPetal="rbxassetid://82584389669499",
@@ -195,7 +195,7 @@ local data = {
         {"TipJar","Tip Jar"},{"LotusPetal","Lotus Petal"},{"CoinRoll","Coin Roll"},
         {"HoneyPot","Honey Pot"},{"SalvageScrap","Scrap"}
     },
-    ADMIN={{"KnockbackStick","Knockback Stick"},{"CartToGo","Cart To Go"}}
+    ADMIN={{"KnockbackStick","Knockback Stick"},{"Scanner","NVCS-3000"},{"CartToGo","Cart To Go"}}
 }
 local categoryOrder = {
     "SALVAGE","LIGHT","HEALING","UTILITY","EDIBLE","MAGICAL","ENTITIES",
@@ -244,6 +244,8 @@ for _, name in ipairs(categoryOrder) do
     end
 end
 memberships.ObjectScanner = {"UTILITY"}
+memberships.Scanner = {"ADMIN"}
+displays.Scanner = "NVCS-3000"
 membership("Buddy", "UNSORTED")
 displays.Buddy = "Buddy"
 membership("Mug", "UNSORTED")
@@ -321,7 +323,7 @@ for _, name in ipairs(categoryOrder) do itemSelector:AddCategory(name, colors[na
 itemSelector:AddCategory("UNSORTED", colors.UNSORTED)
 for _, definition in ipairs(definitions:GetChildren()) do
     local id = definition.Name
-    if id ~= "Scanner" then
+    if id ~= "Scanner" or table.find(memberships.Scanner or {}, "ADMIN") then
         local image = images[id] or savedImages[id] or definition:GetAttribute("Image")
         local display = displays[id] or definition:GetAttribute("DisplayName") or id
         itemSelector:AddIcon(id, id, image, nil, display, nil, nil, memberships[id] or "UNSORTED")
