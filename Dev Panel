@@ -113,6 +113,7 @@ local images = {
     HoneyPot="rbxassetid://84825411467075",
     Microwave="rbxassetid://123210930333739",
     Mug="rbxassetid://123210930333739",
+    Buddy= "rbxassetid://123210930333739",
     Lotus="rbxassetid://121905075599624",
     LotusPetal="rbxassetid://82584389669499",
     Candy="rbxassetid://91226846785149",
@@ -251,7 +252,9 @@ for _, name in ipairs(categoryOrder) do
     end
 end
 memberships.ObjectScanner = {"UTILITY"}
--- First custom UNSORTED item; use the normal item selector for checkmark/background.
+-- Custom UNSORTED items use the standard selectable item cards.
+membership("Buddy", "UNSORTED")
+displays.Buddy = "Buddy"
 membership("Mug", "UNSORTED")
 displays.Mug = "Honcho’s Mug"
 -- Prefer the existing working image, not a hard-coded asset that failed to load.
@@ -407,32 +410,39 @@ for _, name in ipairs(categoryOrder) do
         end
     end
 end
--- Place Mug first in UNSORTED, using the same selectable card created by IconContainer.
+-- Keep Buddy first and Honcho’s Mug second in UNSORTED.
+-- Both use normal IconContainer cards (checkmark and selection background).
 local unsorted = section("UNSORTED")
 if unsorted then
+    local layout = unsorted:FindFirstChildOfClass("UIGridLayout") or unsorted:FindFirstChildOfClass("UIListLayout")
+    if layout then layout.SortOrder = Enum.SortOrder.LayoutOrder end
+    local buddy = unsorted:FindFirstChild("Buddy")
     local mug = unsorted:FindFirstChild("Mug")
-    if mug then
-        mug.Visible = true
-        local layout = unsorted:FindFirstChildOfClass("UIGridLayout") or unsorted:FindFirstChildOfClass("UIListLayout")
-        if layout then layout.SortOrder = Enum.SortOrder.LayoutOrder end
-        for _, card in ipairs(unsorted:GetChildren()) do
-            if card:IsA("GuiButton") and card ~= mug then
-                card.LayoutOrder = card.LayoutOrder + 1
-            end
+    for _, card in ipairs(unsorted:GetChildren()) do
+        if card:IsA("GuiButton") and card ~= buddy and card ~= mug then
+            card.LayoutOrder = card.LayoutOrder + 2
         end
-        mug.LayoutOrder = 0
-        updateImage(mug, "Mug")
-        local label = getLabel(mug)
-        if label then label.Text = "Honcho’s Mug" end
-        local selected = mug:FindFirstChild("IsSelected", true)
-        if selected then
-            print("Mug uses existing selectable item checkmark")
-        else
-            warn("Mug card created; selectable checkmark template not found")
-        end
-    else
-        warn("UNSORTED Mug card was not created by IconContainer")
     end
+    for index, item in ipairs({
+        {card=buddy, id="Buddy", title="Buddy"},
+        {card=mug, id="Mug", title="Honcho’s Mug"}
+    }) do
+        local card = item.card
+        if card then
+            card.Visible = true
+            card.LayoutOrder = index - 1
+            updateImage(card, item.id)
+            local label = getLabel(card)
+            if label then label.Text = item.title end
+            if not card:FindFirstChild("IsSelected", true) then
+                warn(item.id .. " card has no visible checkmark template")
+            end
+        else
+            warn("UNSORTED item missing: " .. item.id)
+        end
+    end
+else
+    warn("UNSORTED section missing")
 end
 
 local utility = section("UTILITY")
