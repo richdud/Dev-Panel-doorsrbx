@@ -1,4 +1,3 @@
-
 -- DOORS ADMIN PANEL - COMPLETE COMBINED SCRIPT
 -- ORIGINAL ITEM DEFINITIONS + DEBUG MENU + SHOP VISIBILITY
 -- Client-side UI changes do not grant server permissions.
@@ -113,6 +112,7 @@ local images = {
     Leftovers="rbxassetid://87174525139694",
     HoneyPot="rbxassetid://84825411467075",
     Microwave="rbxassetid://123210930333739",
+    Mug="rbxassetid://123210930333739",
     Lotus="rbxassetid://121905075599624",
     LotusPetal="rbxassetid://82584389669499",
     Candy="rbxassetid://91226846785149",
@@ -251,6 +251,9 @@ for _, name in ipairs(categoryOrder) do
     end
 end
 memberships.ObjectScanner = {"UTILITY"}
+-- First custom UNSORTED item; use the normal item selector for checkmark/background.
+membership("Mug", "UNSORTED")
+displays.Mug = "Honcho’s Mug"
 -- Prefer the existing working image, not a hard-coded asset that failed to load.
 if originalScannerImage and originalScannerImage ~= "" then
     images.ObjectScanner = originalScannerImage
@@ -404,6 +407,34 @@ for _, name in ipairs(categoryOrder) do
         end
     end
 end
+-- Place Mug first in UNSORTED, using the same selectable card created by IconContainer.
+local unsorted = section("UNSORTED")
+if unsorted then
+    local mug = unsorted:FindFirstChild("Mug")
+    if mug then
+        mug.Visible = true
+        local layout = unsorted:FindFirstChildOfClass("UIGridLayout") or unsorted:FindFirstChildOfClass("UIListLayout")
+        if layout then layout.SortOrder = Enum.SortOrder.LayoutOrder end
+        for _, card in ipairs(unsorted:GetChildren()) do
+            if card:IsA("GuiButton") and card ~= mug then
+                card.LayoutOrder = card.LayoutOrder + 1
+            end
+        end
+        mug.LayoutOrder = 0
+        updateImage(mug, "Mug")
+        local label = getLabel(mug)
+        if label then label.Text = "Honcho’s Mug" end
+        local selected = mug:FindFirstChild("IsSelected", true)
+        if selected then
+            print("Mug uses existing selectable item checkmark")
+        else
+            warn("Mug card created; selectable checkmark template not found")
+        end
+    else
+        warn("UNSORTED Mug card was not created by IconContainer")
+    end
+end
+
 local utility = section("UTILITY")
 if utility then
     for _, id in ipairs({"ObjectScanner", "Microwave"}) do
