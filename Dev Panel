@@ -1,13 +1,9 @@
--- DOORS ADMIN PANEL - COMPLETE COMBINED SCRIPT
--- ORIGINAL ITEM DEFINITIONS + DEBUG MENU + SHOP VISIBILITY
--- Client-side UI changes do not grant server permissions.
 
 if not game:IsLoaded() then game.Loaded:Wait() end
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 local pg = player:WaitForChild("PlayerGui")
 
--- Independent visibility worker: starts before admin initialization.
 do
     local version = (pg:GetAttribute("DoorsShopVisibilityVersion") or 0) + 1
     pg:SetAttribute("DoorsShopVisibilityVersion", version)
@@ -105,15 +101,13 @@ local images = {
     BrokenHeadstone="rbxassetid://125302386058021",
     ChocolateCrate="rbxassetid://119090269970897",
     Flares="rbxassetid://131318338880701",
-    -- Scanner uses its ORIGINAL icon captured before rebuilding Items.
-    -- Do not force the failing asset ID 8682268877357 here.
     Briefcase="rbxassetid://138634158890068",
     PaperPlane="rbxassetid://80334088426896",
     Leftovers="rbxassetid://87174525139694",
     HoneyPot="rbxassetid://84825411467075",
-    Microwave="rbxassetid://123210930333739",
+    Microwave="rbxassetid://96371279864903",
     Mug="rbxassetid://123210930333739",
-    Buddy= "rbxassetid://123210930333739",
+    Buddy="rbxassetid://96164691124017",
     Lotus="rbxassetid://121905075599624",
     LotusPetal="rbxassetid://82584389669499",
     Candy="rbxassetid://91226846785149",
@@ -214,8 +208,6 @@ local function membership(id, name)
     if not table.find(memberships[id], name) then table.insert(memberships[id], name) end
 end
 local oldGrid = oldItems:FindFirstChild("Items")
--- Capture the original Scanner image BEFORE the original Items UI is replaced.
--- Keep the original ImageLabel/ImageButton clone as well as its Image property.
 local originalScannerImage = nil
 local originalScannerIcon = nil
 if oldGrid then
@@ -252,17 +244,14 @@ for _, name in ipairs(categoryOrder) do
     end
 end
 memberships.ObjectScanner = {"UTILITY"}
--- Custom UNSORTED items use the standard selectable item cards.
 membership("Buddy", "UNSORTED")
 displays.Buddy = "Buddy"
 membership("Mug", "UNSORTED")
-displays.Mug = "Honcho’s Mug"
--- Prefer the existing working image, not a hard-coded asset that failed to load.
+displays.Mug = "Honcho's Mug"
 if originalScannerImage and originalScannerImage ~= "" then
     images.ObjectScanner = originalScannerImage
     savedImages.ObjectScanner = originalScannerImage
 else
-    -- Fall back to whatever the original item list recorded.
     images.ObjectScanner = savedImages.ObjectScanner or savedImages.Scanner
 end
 
@@ -410,8 +399,6 @@ for _, name in ipairs(categoryOrder) do
         end
     end
 end
--- Keep Buddy first and Honcho’s Mug second in UNSORTED.
--- Both use normal IconContainer cards (checkmark and selection background).
 local unsorted = section("UNSORTED")
 if unsorted then
     local layout = unsorted:FindFirstChildOfClass("UIGridLayout") or unsorted:FindFirstChildOfClass("UIListLayout")
@@ -425,7 +412,7 @@ if unsorted then
     end
     for index, item in ipairs({
         {card=buddy, id="Buddy", title="Buddy"},
-        {card=mug, id="Mug", title="Honcho’s Mug"}
+        {card=mug, id="Mug", title="Honcho's Mug"}
     }) do
         local card = item.card
         if card then
@@ -452,8 +439,6 @@ if utility then
         if card then updateImage(card, id) else warn("Missing Utility card:", id) end
     end
 end
--- Restore the original Scanner icon object if it was available.
--- This preserves the game's original icon properties instead of only its ID.
 if originalScannerIcon and utility then
     local scannerCard = utility:FindFirstChild("ObjectScanner")
     local scannerHolder = scannerCard and scannerCard:FindFirstChild("Container")
@@ -479,12 +464,6 @@ if salvage and salvage.Parent then
         end
     end
 end
--- =====================================
--- SALVAGE SELECTION COLORS
--- Unchecked: black (0,0,0)
--- Checked: dark gray (32,32,32)
--- Only affects SALVAGE item cards.
--- =====================================
 do
     local salvageContents = section("SALVAGE")
     if salvageContents then
@@ -493,7 +472,6 @@ do
 
         local function setCardColor(card, selected)
             local tint = selected and checkedGray or black
-            -- Apply to the item background, not to its icon or text.
             card.BackgroundColor3 = tint
             local holder = card:FindFirstChild("Container")
             if holder and holder:IsA("GuiObject") then
@@ -509,7 +487,6 @@ do
 
                 setCardColor(card, selected)
 
-                -- Use the game's checkmark visibility when available.
                 if marked and marked:IsA("GuiObject") then
                     marked:GetPropertyChangedSignal("Visible"):Connect(function()
                         selected = marked.Visible
@@ -517,7 +494,6 @@ do
                     end)
                 end
 
-                -- Fallback for versions that don't update IsSelected.Visible.
                 card.Activated:Connect(function()
                     local previousMarker = marked and marked:IsA("GuiObject")
                         and marked.Visible or nil
@@ -547,12 +523,6 @@ oldItems.Name = "PreviousItems"
 oldItems:Destroy()
 print("ITEMS SECTION RESTORED")
 
--- =====================================
--- A-90 PLAYER ACTION: BETWEEN RANSOM AND ADMIN
--- Uses the LOCAL player's name (no fixed username).
--- The cloned visual button sends A90Player once per tap.
--- Does not change Items, Debug, or original actions.
--- =====================================
 do
     local ReplicatedStorage = game:GetService("ReplicatedStorage")
     local actionGroup = playersGroup:FindFirstChild("Player Actions")
@@ -592,24 +562,18 @@ do
             local previous = targetParent:FindFirstChild("A90CustomButton")
             if previous then previous:Destroy() end
 
-            -- Clone ONLY the appearance. Event connections on the
-            -- original Ransom button are not copied by Clone().
             local addedButton = ransom:Clone()
             addedButton.Name = "A90CustomButton"
             addedButton.Visible = true
             addedButton.Active = true
             addedButton.AutoButtonColor = ransom.AutoButtonColor
 
-            -- Prevent cloned LocalScripts from adding unrelated behavior.
             for _, descendant in ipairs(addedButton:GetDescendants()) do
                 if descendant:IsA("LocalScript") or descendant:IsA("Script") then
                     descendant:Destroy()
                 end
             end
 
-            -- The cloned Ransom button already has the correct label
-            -- color, font, outline, gradients and transparencies.
-            -- Only change the label text; preserve all styling.
             local foundTitle = false
             if addedButton:IsA("TextButton") then
                 addedButton.Text = "A-90"
@@ -629,9 +593,6 @@ do
 
             addedButton.Parent = targetParent
 
-            -- Preserve the preexisting visual order, including buttons
-            -- that share the same LayoutOrder. DO NOT alphabetize ties:
-            -- doing that reordered all the other Player Actions.
             local layout = targetParent:FindFirstChildOfClass("UIListLayout")
                 or targetParent:FindFirstChildOfClass("UIGridLayout")
             if layout then layout.SortOrder = Enum.SortOrder.LayoutOrder end
@@ -650,15 +611,11 @@ do
             end
             table.sort(siblings, function(a, b)
                 if a.order ~= b.order then return a.order < b.order end
-                -- The existing UI may have tied LayoutOrder values;
-                -- keep their actual on-screen order instead of sorting by name.
                 if a.y ~= b.y then return a.y < b.y end
                 if a.x ~= b.x then return a.x < b.x end
                 return a.index < b.index
             end)
 
-            -- Set a new sequence without changing the relative order
-            -- of ANY existing action. Only insert A-90 after Ransom.
             local ordered = {}
             for _, entry in ipairs(siblings) do
                 table.insert(ordered, entry.object)
@@ -670,14 +627,12 @@ do
                 gui.LayoutOrder = index
             end
 
-            -- Resolve the RemoteEvent once; no username is hard-coded.
             local remotes = ReplicatedStorage:WaitForChild("RemotesFolder", 15)
             local remote = remotes and remotes:WaitForChild("AdminPanelRunCommand", 15)
             if not remote or not remote:IsA("RemoteEvent") then
                 warn("A-90: AdminPanelRunCommand RemoteEvent not found")
             else
                 local function triggerA90()
-                    -- Current executor player, regardless of username.
                     local username = Players.LocalPlayer.Name
                     remote:FireServer("A90Player", {
                         Players = {
@@ -687,8 +642,6 @@ do
                     print("A-90 request sent for:", username)
                 end
 
-                -- Bind directly to the copied button, allowing each click
-                -- to send a new request; there is no local cooldown.
                 addedButton.Activated:Connect(triggerA90)
                 print("A-90 button installed between Ransom and Admin")
             end
@@ -697,7 +650,6 @@ do
     end
 end
 
--- DEBUG MENU: the screenshot shows Pages.PLAYERS.Players as the content holder.
 do
     local tabs = container:WaitForChild("TabButtons", 20)
     local tabTemplate = panelClient:FindFirstChild("TabButton")
@@ -713,9 +665,6 @@ do
         debugPage.Name = "Debug"
         debugPage.Visible = false
         debugPage.Parent = pages
-        -- PLAYERS has a separate top-level Quick Buttons section.
-        -- Remove it from the cloned DEBUG page only, so there is just
-        -- one Quick Buttons section (DebugQuickButtons) in Debug.
         local copiedQuickButtons = debugPage:FindFirstChild("Quick Buttons")
         if copiedQuickButtons then
             copiedQuickButtons:Destroy()
@@ -724,7 +673,6 @@ do
         if not content then
             warn("DEBUG: Nested Players content missing")
         else
-            -- Only clear the cloned Debug copy; original PLAYERS page is unchanged.
             for _, child in ipairs(content:GetChildren()) do
                 if child:IsA("GuiObject") then child:Destroy() end
             end
