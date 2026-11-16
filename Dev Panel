@@ -428,7 +428,7 @@ local customImages = {
     Microwave="rbxassetid://128168969192109", Mug="rbxassetid://97657032741719", Scanner="rbxassetid://11374263930", ObjectScanner="rbxassetid://86882268877357",
     Buddy="rbxassetid://96164691124017", 
 PuzzlePainting="rbxassetid://77370977811157",
-CringlePresent="rbxassetid://123210930333739", 
+CringlePresent="rbxassetid://14098615241", 
 RushSpawnBottle="rbxassetid://112231951524554",
 droninit="rbxassetid://127017316583079",
 Holy_Hand_Grenade="rbxassetid://139711497567369",
