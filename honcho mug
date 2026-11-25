@@ -1,0 +1,834 @@
+--// Services \\--
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local CollectionService = game:GetService("CollectionService")
+local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local ProximityPromptService = game:GetService("ProximityPromptService")
+
+--// Variables \\--
+local LocalPlayer = Players.LocalPlayer
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+
+--// Helpers \\--
+local Create = function(class, properties)
+    local Object = class
+    properties = properties or {}
+
+    if typeof(class) == "string" then
+        Object = Instance.new(class)
+    end
+
+    for Property, Value in properties do
+        if Property == "Parent" then continue end
+
+        Object[Property] = Value
+    end
+
+    if properties.Parent then
+        Object.Parent = properties.Parent
+    end
+
+    return Object
+end
+
+local FetchRemoteObject = function(path, devMode)
+    if not isfolder("assets") then
+        makefolder("assets")
+    end
+
+    if not isfolder("assets/upio") then
+        makefolder("assets/upio")
+    end
+
+    if devMode then
+        return game:GetObjects(getcustomasset(path))[1]
+    end
+
+    local AssetPath = `assets/upio/{path}`
+    if not isfile(AssetPath) or readfile(AssetPath) == "" then
+        writefile(AssetPath, game:HttpGet(`https://kardin-hong-upio-assets.pages.dev/{path}`))
+    end
+
+    return game:GetObjects(getcustomasset(AssetPath))[1]
+end
+
+--// Honcho Rig \\--
+local HonchoRig = FetchRemoteObject(
+    "HonchoRig.rbxm"--,
+    -- LocalPlayer.UserId == 3347106500
+)
+
+--// Tool \\--
+local Tool = FetchRemoteObject(
+    "HonchoCoffee.rbxm"--,
+    -- LocalPlayer.UserId == 3347106500
+)
+
+for _, Cube in Tool:QueryDescendants("> #Handle > #Coffee > MeshPart") do
+    Cube.Transparency = 1
+end
+
+local ItemName = Tool.Name
+local OpenAnimation
+
+--// Session \\--
+local Alive = true
+local Connections = {}
+
+local LiveHoncho
+local MorphActive = false
+local CutsceneActive = false
+local CutsceneDistance = 1
+local CutsceneGui
+local Brewing = {}
+
+local ZoomDistance = 8
+local MainGameSrc = require(LocalPlayer.PlayerGui.MainUI.Initiator.Main_Game)
+
+local Unload = function()
+    Alive = false
+    MorphActive = false
+    CutsceneActive = false
+    pcall(RunService.UnbindFromRenderStep, RunService, "HonchoThirdPerson")
+
+    if CutsceneGui then
+        CutsceneGui:Destroy()
+        CutsceneGui = nil
+    end
+
+    if LiveHoncho then
+        LiveHoncho:Destroy()
+        LiveHoncho = nil
+    end
+
+    if Character then
+        for _, Part in Character:QueryDescendants("BasePart, Decal, Texture") do
+            Part.LocalTransparencyModifier = 0
+        end
+    end
+
+    for _, Item in Connections do
+        if typeof(Item) == "RBXScriptConnection" then
+            Item:Disconnect()
+        elseif typeof(Item) == "thread" then
+            pcall(task.cancel, Item)
+        end
+    end
+
+    table.clear(Connections)
+
+    for Machine, Brew in pairs(Brewing) do
+        if Brew.Visual then
+            Brew.Visual:Destroy()
+        end
+        if Brew.Prompt then
+            Brew.Prompt:Destroy()
+        end
+        if Brew.Drip then
+            Brew.Drip:Destroy()
+        end
+        if Brew.Tool and Brew.Tool.Parent then
+            Brew.Tool.Parent = LocalPlayer.Backpack
+        end
+        local MachinePrompt = Machine:FindFirstChild("InteractPrompt")
+        if MachinePrompt then
+            MachinePrompt.Enabled = true
+        end
+    end
+    table.clear(Brewing)
+end
+
+if getgenv()._ItemUnload then
+    getgenv()._ItemUnload()
+end
+
+getgenv()._ItemUnload = Unload
+
+local Give = function(item)
+    table.insert(Connections, item)
+    return item
+end
+
+--// Script Variables \\--
+local HiddenDrops = ReplicatedStorage:FindFirstChild("HiddenSecretItems") or Create("Folder", {
+    Name = "HiddenSecretItems",
+    Parent = ReplicatedStorage
+})
+
+--// Remotes \\--
+local RemotesFolder = ReplicatedStorage:WaitForChild("RemotesFolder")
+local ToolAnimate = RemotesFolder:WaitForChild("ToolAnimate")
+local FlashSpecify = RemotesFolder:WaitForChild("FlashSpecify")
+local Caption = RemotesFolder:WaitForChild("Caption")
+
+--// Connections \\--
+local SetupCharacterConnections
+do
+    --// Helpers \\--
+    local DEFAULT_GRIP_C0 = CFrame.new(0, -0.179945424, 0, 1, 0, 0, 0, 0, 1, 0, -1, 0)
+
+    local HoldToken = 0
+
+    local ApplyDoorsHold = function(character, tool)
+        if tool.Parent ~= character then return end
+
+        local Handle = tool:FindFirstChild("Handle")
+        local Attach = Handle and Handle:FindFirstChild("ToolGripAttach")
+        local RightHand = character:FindFirstChild("RightHand")
+        if not Handle or not Attach or not RightHand then return end
+
+        Handle.Anchored = true
+        Handle.CanCollide = false
+        Handle.Massless = true
+
+        local RightGrip = RightHand:FindFirstChild("RightGrip")
+        local C0 = RightGrip and RightGrip.C0 or DEFAULT_GRIP_C0
+        if RightGrip then
+            RightGrip:Destroy()
+        end
+
+        local Motor = RightHand:FindFirstChild("Handle")
+        if not Motor or not Motor:IsA("Motor6D") then
+            Motor = Create("Motor6D", {
+                Name = "Handle",
+                Parent = RightHand
+            })
+        end
+
+        Motor.Part0 = RightHand
+        Motor.Part1 = Handle
+        Motor.C0 = C0
+        Motor.C1 = Attach.CFrame
+        Motor.Enabled = true
+
+        Handle.Anchored = false
+    end
+
+    local TrackHold = function(character, tool)
+        HoldToken += 1
+        local Token = HoldToken
+
+        ApplyDoorsHold(character, tool)
+
+        Give(task.spawn(function()
+            for _ = 1, 20 do
+                task.wait()
+                if not Alive then return end
+                if Token ~= HoldToken then return end
+                if tool.Parent ~= character then return end
+
+                ApplyDoorsHold(character, tool)
+            end
+        end))
+    end
+
+    local DropItem = function(tool)
+        if not tool or tool.Name ~= ItemName then return end
+
+        local Handle = tool:FindFirstChild("Handle")
+        local Root = Character and Character:FindFirstChild("HumanoidRootPart")
+        local Drops = workspace:FindFirstChild("Drops")
+        if not Handle or not Root or not Drops then return end
+
+        local Look = Root.CFrame.LookVector * Vector3.new(1, 0, 1)
+        if Look.Magnitude < 0.05 then
+            Look = Vector3.zAxis
+        else
+            Look = Look.Unit
+        end
+
+        local SpawnCF = CFrame.lookAlong((Root.CFrame * CFrame.new(0, -1, -2)).Position, Look, Vector3.yAxis)
+
+        local Drop = Create("Model", {
+            Name = ItemName
+        })
+
+        local Main = Create("Part", {
+            Name = "Main",
+            Size = Vector3.one,
+            Transparency = 1,
+            CanCollide = false,
+            Massless = true,
+            CollisionGroup = "ItemDrop",
+            CFrame = SpawnCF,
+            Parent = Drop
+        })
+
+        local Pickup = Create("Part", {
+            Name = "ItemDropPickup",
+            Size = Vector3.one,
+            Transparency = 1,
+            CanCollide = true,
+            CollisionGroup = "ItemDrop",
+            CustomPhysicalProperties = PhysicalProperties.new(1, 2, 0, 100, 100),
+            CFrame = SpawnCF,
+            Parent = Drop
+        })
+
+        Create("Weld", {
+            Part0 = Main,
+            Part1 = Pickup,
+            C0 = CFrame.identity,
+            C1 = CFrame.identity,
+            Parent = Drop
+        })
+
+        local FloorOffset = CFrame.new(0, -Pickup.Size.Y / 2 + Handle.Size.Y / 2, 0)
+
+        local Visual = Create(Handle:Clone(), {
+            Anchored = false,
+            CanCollide = false,
+            Massless = true,
+            CFrame = SpawnCF * FloorOffset,
+            Parent = Drop
+        })
+
+        for _, Part in Visual:QueryDescendants("BasePart") do
+            Part.Anchored = false
+            Part.CanCollide = false
+            Part.Massless = true
+        end
+
+        Create("Weld", {
+            Part0 = Main,
+            Part1 = Visual,
+            C0 = FloorOffset,
+            C1 = CFrame.identity,
+            Parent = Drop
+        })
+
+        Create("BodyGyro", {
+            MaxTorque = Vector3.new(1e5, 1e5, 1e5),
+            P = 3000,
+            D = 500,
+            CFrame = SpawnCF,
+            Parent = Pickup
+        })
+
+        local Prompt = Create("ProximityPrompt", {
+            Name = "ModulePrompt",
+            ActionText = "Obtain",
+            ObjectText = tool:GetAttribute("NameSingular"),
+            HoldDuration = 0,
+            MaxActivationDistance = 9,
+            Style = Enum.ProximityPromptStyle.Custom,
+            Parent = Drop
+        })
+
+        CollectionService:AddTag(Drop, "ItemDrop")
+        Drop:SetAttribute("Pickup", ItemName)
+        Drop.PrimaryPart = Main
+
+        local Parked = Create("ObjectValue", {
+            Name = "ParkedTool",
+            Value = tool,
+            Parent = Drop
+        })
+
+        tool.Parent = HiddenDrops
+        Drop.Parent = Drops
+        Pickup.AssemblyLinearVelocity = Look * 20 + Vector3.yAxis * 0.5
+        Pickup.AssemblyAngularVelocity = Vector3.zero
+
+        Give(Prompt.Triggered:Connect(function(player)
+            if player ~= LocalPlayer then return end
+
+            local Stored = Parked.Value
+            if Stored then
+                Stored.Parent = LocalPlayer.Backpack
+            end
+
+            Drop:Destroy()
+        end))
+    end
+
+    --// Setup \\--
+    SetupCharacterConnections = function(Char)
+        Character = Char
+
+        local RightHand = Character:WaitForChild("RightHand")
+
+        --// Holding Fix \\--
+        Give(RightHand.ChildAdded:Connect(function(child)
+            if child.Name ~= "RightGrip" then return end
+
+            local Tool = Character:FindFirstChild(ItemName)
+            if not Tool then return end
+
+            ApplyDoorsHold(Character, Tool)
+        end))
+
+        Give(Character.ChildRemoved:Connect(function(child)
+            if child.Name ~= ItemName then return end
+
+            local Motor = RightHand:FindFirstChild("Handle")
+            if not Motor or not Motor:IsA("Motor6D") then return end
+
+            Motor:Destroy()
+        end))
+
+        local Existing = Character:FindFirstChild(ItemName)
+        if Existing then
+            TrackHold(Character, Existing)
+        end
+
+        Give(Character.ChildAdded:Connect(function(child)
+            if child.Name ~= ItemName then return end
+
+            TrackHold(Character, child)
+        end))
+
+        local Humanoid = Character:WaitForChild("Humanoid")
+        OpenAnimation = Humanoid.Animator:LoadAnimation(Tool.Animations.open)
+    end
+
+    --// Init \\--
+    SetupCharacterConnections(Character)
+    Give(LocalPlayer.CharacterAdded:Connect(SetupCharacterConnections))
+
+    Give(UserInputService.InputBegan:Connect(function(input)
+        local Tool = Character:FindFirstChild(ItemName)
+        if not Tool then return end
+
+        if input.UserInputType == Enum.UserInputType.MouseButton2 or input.KeyCode == Enum.KeyCode.ButtonL2 then
+            firesignal(ToolAnimate.OnClientEvent, Tool, "Inspect")
+            return
+        end
+
+        if input.KeyCode ~= Enum.KeyCode.X and input.KeyCode ~= Enum.KeyCode.Backspace and input.KeyCode ~= Enum.KeyCode.DPadDown then return end
+
+        DropItem(Tool)
+    end))
+end
+
+--// Coffee Visuals \\--
+local CoffeeVisuals = {
+    Cubes = { "Cube1", "Cube2", "Cube3" },
+    Colors = {
+        Coffee = Color3.fromRGB(24, 17, 0),
+        Milk = Color3.fromRGB(110, 78, 48),
+        Creamer = Color3.fromRGB(168, 132, 88),
+        Latte = Color3.fromRGB(198, 168, 120),
+    },
+    FillTokens = setmetatable({}, { __mode = "k" }),
+    Functions = {}
+}
+
+do
+    CoffeeVisuals.Functions.GetMugParts = function(mug)
+        local Handle = mug and mug:FindFirstChild("Handle")
+        local Coffee = Handle and Handle:FindFirstChild("Coffee")
+        if not Coffee then return end
+
+        return Coffee, Coffee:FindFirstChild("Weld")
+    end
+
+    CoffeeVisuals.Functions.GetCoffeeBottomY = function(coffee, weld)
+        if not weld then
+            return -0.416666657
+        end
+
+        return weld.C0.Position.Y - coffee.Size.Y / 2
+    end
+
+    CoffeeVisuals.Functions.GetDrinkColor = function(mug)
+        if mug:GetAttribute("HasMilk") and mug:GetAttribute("HasCreamer") then
+            return CoffeeVisuals.Colors.Latte
+        elseif mug:GetAttribute("HasCreamer") then
+            return CoffeeVisuals.Colors.Creamer
+        elseif mug:GetAttribute("HasMilk") then
+            return CoffeeVisuals.Colors.Milk
+        end
+
+        return CoffeeVisuals.Colors.Coffee
+    end
+
+    CoffeeVisuals.Functions.ApplyFill = function(coffee, weld, fillHeight)
+        local BottomY = CoffeeVisuals.Functions.GetCoffeeBottomY(coffee, weld)
+        coffee.Size = Vector3.new(coffee.Size.X, fillHeight, coffee.Size.Z)
+
+        if weld then
+            weld.C0 = CFrame.new(0, BottomY + fillHeight / 2, 0)
+        end
+
+        for _, Name in CoffeeVisuals.Cubes do
+            local Cube = coffee:FindFirstChild(Name)
+            local CubeWeld = Cube and Cube:FindFirstChild("Weld")
+            if not CubeWeld then continue end
+
+            local Position = CubeWeld.C0.Position
+            local Rotation = CubeWeld.C0 - Position
+            CubeWeld.C0 = CFrame.new(
+                Position.X,
+                fillHeight / 2 + 0.1,
+                Position.Z
+            ) * Rotation
+        end
+    end
+
+    CoffeeVisuals.Functions.SetCubesVisible = function(coffee, visible)
+        Give(task.spawn(function()
+            for _, Name in CoffeeVisuals.Cubes do
+                if not Alive then return end
+
+                local Cube = coffee:FindFirstChild(Name)
+                if Cube then
+                    TweenService:Create(Cube, TweenInfo.new(0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                        Transparency = visible and 0 or 1
+                    }):Play()
+                end
+
+                task.wait(0.18)
+            end
+        end))
+    end
+
+    CoffeeVisuals.Functions.TweenFill = function(coffee, weld, fillHeight, duration)
+        CoffeeVisuals.FillTokens[coffee] = (CoffeeVisuals.FillTokens[coffee] or 0) + 1
+        local Token = CoffeeVisuals.FillTokens[coffee]
+        local Start = coffee.Size.Y
+
+        Give(task.spawn(function()
+            local Started = os.clock()
+            local Duration = duration or 0.65
+
+            while Alive do
+                if CoffeeVisuals.FillTokens[coffee] ~= Token then return end
+
+                local Alpha = math.clamp((os.clock() - Started) / Duration, 0, 1)
+                local Ease = 1 - (1 - Alpha) ^ 2
+                CoffeeVisuals.Functions.ApplyFill(coffee, weld, Start + (fillHeight - Start) * Ease)
+
+                if Alpha >= 1 then break end
+                task.wait()
+            end
+        end))
+    end
+
+    CoffeeVisuals.Functions.InitMug = function(mug)
+        local Coffee, Weld = CoffeeVisuals.Functions.GetMugParts(mug)
+        if not Coffee then return end
+
+        mug:SetAttribute("HasCoffee", false)
+        mug:SetAttribute("HasSugar", false)
+        mug:SetAttribute("HasMilk", false)
+        mug:SetAttribute("HasCreamer", false)
+
+        Coffee.Transparency = 1
+        Coffee.Color = CoffeeVisuals.Colors.Coffee
+        CoffeeVisuals.Functions.ApplyFill(Coffee, Weld, 0.001)
+
+        for _, Name in CoffeeVisuals.Cubes do
+            local Cube = Coffee:FindFirstChild(Name)
+            if Cube then
+                Cube.Transparency = 1
+            end
+        end
+    end
+
+    CoffeeVisuals.Functions.CreateBrewEmitter = function(parent)
+        return Create("ParticleEmitter", {
+            Name = "BrewDrip",
+            Texture = "rbxassetid://7886908733",
+            Color = ColorSequence.new(CoffeeVisuals.Colors.Coffee),
+            LightEmission = 0,
+            LightInfluence = 1,
+            Brightness = 1,
+            Orientation = Enum.ParticleOrientation.FacingCameraWorldUp,
+            Shape = Enum.ParticleEmitterShape.Box,
+            ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume,
+            ShapeInOut = Enum.ParticleEmitterShapeInOut.Outward,
+            Size = NumberSequence.new({
+                NumberSequenceKeypoint.new(0, 0.08),
+                NumberSequenceKeypoint.new(0.355, 0.424),
+                NumberSequenceKeypoint.new(0.454, 0.008),
+                NumberSequenceKeypoint.new(0.484, 0.483),
+                NumberSequenceKeypoint.new(0.598, 0.018),
+                NumberSequenceKeypoint.new(1, 0.03),
+            }),
+            Squash = NumberSequence.new({
+                NumberSequenceKeypoint.new(0, 0),
+                NumberSequenceKeypoint.new(0.54, 1.649),
+                NumberSequenceKeypoint.new(1, 0),
+            }),
+            Transparency = NumberSequence.new({
+                NumberSequenceKeypoint.new(0, 0.1),
+                NumberSequenceKeypoint.new(1, 0.55),
+            }),
+            Lifetime = NumberRange.new(0.2, 0.4),
+            Rate = 300,
+            Speed = NumberRange.new(1, 2),
+            SpreadAngle = Vector2.zero,
+            Acceleration = Vector3.new(0, -40, 0),
+            Drag = 0,
+            Rotation = NumberRange.new(0, 0),
+            RotSpeed = NumberRange.new(0, 0),
+            EmissionDirection = Enum.NormalId.Bottom,
+            Parent = parent
+        })
+    end
+end
+
+function Deny(text)
+    firesignal(FlashSpecify.OnClientEvent, "Cannot")
+    firesignal(Caption.OnClientEvent, text, "thought")
+end
+
+local PlaceMugInContainer = function(container, sourceMug)
+    local Handle = sourceMug:FindFirstChild("Handle")
+    if not Handle then return end
+
+    local Visual = Handle:Clone()
+    Visual.Name = "BrewingMug"
+    Visual.Anchored = true
+    Visual.CanCollide = false
+    Visual.Massless = true
+
+    for _, Part in Visual:QueryDescendants("BasePart") do
+        Part.Anchored = false
+        Part.CanCollide = false
+        Part.Massless = true
+    end
+
+    Visual.Parent = container
+    Visual.CFrame = container:IsA("BasePart") and container.CFrame or container:GetPivot()
+
+    if container:IsA("BasePart") then
+        Create("WeldConstraint", {
+            Part0 = container,
+            Part1 = Visual,
+            Parent = Visual
+        })
+    end
+
+    return Visual
+end
+
+local CopyCoffeeVisual = function(fromHandle, toMug)
+    local FromCoffee = fromHandle and fromHandle:FindFirstChild("Coffee")
+    local ToCoffee, ToWeld = CoffeeVisuals.Functions.GetMugParts(toMug)
+    if not FromCoffee or not ToCoffee then return end
+
+    ToCoffee.Transparency = FromCoffee.Transparency
+    ToCoffee.Color = FromCoffee.Color
+    CoffeeVisuals.Functions.ApplyFill(ToCoffee, ToWeld, FromCoffee.Size.Y)
+
+    for _, Name in CoffeeVisuals.Cubes do
+        local FromCube = FromCoffee:FindFirstChild(Name)
+        local ToCube = ToCoffee:FindFirstChild(Name)
+        if FromCube and ToCube then
+            ToCube.Transparency = FromCube.Transparency
+        end
+    end
+end
+
+local ReturnBrewedMug = function(machineItem)
+    local Brew = Brewing[machineItem]
+    if not Brew then return end
+
+    if Brew.Visual and Brew.Tool then
+        CopyCoffeeVisual(Brew.Visual, Brew.Tool)
+    end
+
+    if Brew.Visual then
+        Brew.Visual:Destroy()
+    end
+    if Brew.Prompt then
+        Brew.Prompt:Destroy()
+    end
+    if Brew.Drip then
+        Brew.Drip:Destroy()
+    end
+    if Brew.Tool then
+        Brew.Tool.Parent = LocalPlayer.Backpack
+    end
+
+    Brewing[machineItem] = nil
+
+    local MachinePrompt = machineItem:FindFirstChild("InteractPrompt")
+    if MachinePrompt then
+        MachinePrompt.Enabled = true
+    end
+end
+
+--// Coffee Machine \\--
+function SetupCoffeeMachine(machine)
+    if machine.Name ~= "ArchivesCoffeeMachine" then return end
+
+    local Items = machine:WaitForChild("Items")
+
+    local CoffeeMachine = Items:WaitForChild("CoffeeMachine")
+    local Creamer = Items:WaitForChild("Creamer")
+    local Milk = Items:WaitForChild("Milk")
+    local Sugar = Items:WaitForChild("Sugar")
+
+    for _, Item in { CoffeeMachine, Creamer, Milk, Sugar } do
+        local InteractPrompt = Item:WaitForChild("InteractPrompt")
+        InteractPrompt.Enabled = Item ~= CoffeeMachine or not Brewing[CoffeeMachine]
+
+        Give(InteractPrompt:GetPropertyChangedSignal("Enabled"):Connect(function()
+            if Item == CoffeeMachine and Brewing[CoffeeMachine] then
+                return
+            end
+
+            InteractPrompt.Enabled = true
+        end))
+    end
+end
+
+for _, machine in workspace:QueryDescendants("#ArchivesCoffeeMachine") do SetupCoffeeMachine(machine) end
+Give(workspace.DescendantAdded:Connect(SetupCoffeeMachine))
+
+--// Coffee Machine Handling Interaction \\--
+Give(ProximityPromptService.PromptTriggered:Connect(function(prompt, player)
+    if player ~= LocalPlayer then return end
+    if prompt.Name ~= "InteractPrompt" then return end
+
+    local CoffeeMachine = prompt:FindFirstAncestor("ArchivesCoffeeMachine")
+    if not CoffeeMachine then return end
+
+    local MachineUsedItem = prompt.Parent.Name
+    if MachineUsedItem == "Container" then
+        local MachineItem = prompt:FindFirstAncestor("CoffeeMachine")
+        if MachineItem then
+            ReturnBrewedMug(MachineItem)
+        end
+        return
+    end
+
+    local TargetMug = Character:FindFirstChild(ItemName)
+    if not TargetMug then
+        Deny("I don't have a mug...")
+        return
+    end
+
+    local Coffee, Weld = CoffeeVisuals.Functions.GetMugParts(TargetMug)
+    if not Coffee then return end
+
+    --// Handlers \\--
+    if MachineUsedItem == "CoffeeMachine" then
+        if Brewing[prompt.Parent] then
+            Deny("There's already a mug in there.")
+            return
+        end
+        if TargetMug:GetAttribute("HasCoffee") then
+            Deny("It's already full.")
+            return
+        end
+
+        local Container = prompt.Parent:FindFirstChild("Container")
+        if not Container then return end
+
+        local Humanoid = Character:FindFirstChildOfClass("Humanoid")
+        if Humanoid then
+            Humanoid:UnequipTools()
+        end
+        TargetMug.Parent = HiddenDrops
+
+        local Visual = PlaceMugInContainer(Container, TargetMug)
+        if not Visual then
+            TargetMug.Parent = LocalPlayer.Backpack
+            return
+        end
+
+        local VisualCoffee = Visual:FindFirstChild("Coffee")
+        local VisualWeld = VisualCoffee and VisualCoffee:FindFirstChild("Weld")
+
+        TargetMug:SetAttribute("HasCoffee", true)
+        if VisualCoffee then
+            VisualCoffee.Transparency = 0
+            VisualCoffee.Color = CoffeeVisuals.Functions.GetDrinkColor(TargetMug)
+            CoffeeVisuals.Functions.TweenFill(VisualCoffee, VisualWeld, 0.67, 10.221)
+        end
+
+        local DripParent = prompt.Parent:FindFirstChild("TargetDrip")
+        if not DripParent then
+            DripParent = Create("Attachment", {
+                Name = "TargetDrip",
+                CFrame = CFrame.new(0, 0.7, 0),
+                Parent = Container
+            })
+        end
+        local Drip = CoffeeVisuals.Functions.CreateBrewEmitter(DripParent)
+
+        local MachineSound = Container:FindFirstChild("Machine")
+
+        local TakePrompt = Create("ProximityPrompt", {
+            Name = "InteractPrompt",
+            ActionText = "Take",
+            ObjectText = TargetMug:GetAttribute("NameSingular") or "Mug",
+            HoldDuration = 0,
+            MaxActivationDistance = 9,
+            RequiresLineOfSight = false,
+            Style = Enum.ProximityPromptStyle.Custom,
+            Enabled = MachineSound == nil,
+            Parent = Container
+        })
+
+        prompt.Enabled = false
+        Brewing[prompt.Parent] = {
+            Tool = TargetMug,
+            Visual = Visual,
+            Prompt = TakePrompt,
+            Drip = Drip
+        }
+
+        if MachineSound then
+            MachineSound:Play()
+            Give(task.spawn(function()
+                repeat task.wait()
+                until not Alive or not MachineSound.IsPlaying
+
+                if Drip and Drip.Parent then
+                    Drip.Enabled = false
+                end
+                if TakePrompt.Parent then
+                    TakePrompt.Enabled = true
+                end
+            end))
+        end
+    elseif MachineUsedItem == "Sugar" then
+        if not TargetMug:GetAttribute("HasCoffee") then
+            Deny("There's nothing to sweeten.")
+            return
+        end
+        if TargetMug:GetAttribute("HasSugar") then
+            Deny("That's enough sugar.")
+            return
+        end
+
+        TargetMug:SetAttribute("HasSugar", true)
+        CoffeeVisuals.Functions.ApplyFill(Coffee, Weld, Coffee.Size.Y)
+        CoffeeVisuals.Functions.SetCubesVisible(Coffee, true)
+    elseif MachineUsedItem == "Milk" then
+        if not TargetMug:GetAttribute("HasCoffee") then
+            Deny("I should brew coffee first.")
+            return
+        end
+        if TargetMug:GetAttribute("HasMilk") then
+            Deny("There's already milk in it.")
+            return
+        end
+
+        TargetMug:SetAttribute("HasMilk", true)
+        TweenService:Create(Coffee, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            Color = CoffeeVisuals.Functions.GetDrinkColor(TargetMug)
+        }):Play()
+    elseif MachineUsedItem == "Creamer" then
+        if not TargetMug:GetAttribute("HasCoffee") then
+            Deny("I should brew coffee first.")
+            return
+        end
+        if TargetMug:GetAttribute("HasCreamer") then
+            Deny("There's already creamer in it.")
+            return
+        end
+
+        TargetMug:SetAttribute("HasCreamer", true)
+        TweenService:Create(Coffee, TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+            Color = CoffeeVisuals.Functions.GetDrinkColor(TargetMug)
+        }):Play()
+    end
+end))
