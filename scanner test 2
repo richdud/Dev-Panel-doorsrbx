@@ -1,5 +1,9 @@
 --[[
-  NVCS-3000 Scanner - Complete Master Version (V2.3 Release)
+  NVCS-3000 Scanner - Complete Master Version (V2.5 Release)
+  - Dropped scanner lands with the screen facing the floor (auto-detected, with safe fallback).
+  - Drop code is wrapped in pcall and warns instead of failing silently.
+  - CurrentRooms wait has a timeout so the tool never gets stuck half-loaded.
+  - Drop key handler no longer blocked by gameProcessed.
   - Added drop/pickup mechanic (X / Backspace / DPadDown) matching Honcho's Mug.
   - Added workspace.LiveEntities folder observer and scanning.
   - Fixed third-person Fake Scanner hand positioning (No longer halfway inside the palm).
@@ -151,8 +155,57 @@ if not HiddenDrops then
   HiddenDrops.Parent = ReplicatedStorage
 end
 
--- Flips the dropped scanner so the screen faces the floor instead of up
-local DROP_FLIP = CFrame.Angles(math.pi, 0, 0)
+-- Used if the screen direction can't be detected: flips the scanner upside down
+local FALLBACK_FLIP = CFrame.Angles(math.pi, 0, 0)
+
+-- Returns a rotation that points the screen face at the floor
+local function GetFaceDownRotation(Handle)
+  local ok, result = pcall(function()
+    local Screen = Handle:FindFirstChild("Screen")
+    if not (Screen and Screen:IsA("BasePart")) then
+      error("Screen part not found")
+    end
+
+    local face = screenUI.Face
+    local normal = Vector3.FromNormalId(face)
+
+    local rel = Handle.CFrame:ToObjectSpace(Screen.CFrame)
+    normal = rel:VectorToWorldSpace(normal)
+    if normal.Magnitude < 0.01 then
+      error("Bad screen normal")
+    end
+    normal = normal.Unit
+
+    local down = Vector3.new(0, -1, 0)
+    local dot = math.clamp(normal:Dot(down), -1, 1)
+    local rot
+
+    if dot > 0.9999 then
+      rot = CFrame.identity
+    elseif dot < -0.9999 then
+      local axis = normal:Cross(Vector3.xAxis)
+      if axis.Magnitude < 0.01 then
+        axis = normal:Cross(Vector3.zAxis)
+      end
+      rot = CFrame.fromAxisAngle(axis.Unit, math.pi)
+    else
+      rot = CFrame.fromAxisAngle(normal:Cross(down).Unit, math.acos(dot))
+    end
+
+    -- Verify: the screen normal must now point at the floor
+    local check = rot:VectorToWorldSpace(normal)
+    if check.Y > -0.98 then
+      error("Rotation check failed")
+    end
+
+    return rot
+  end)
+
+  if ok and typeof(result) == "CFrame" then
+    return result
+  end
+  return FALLBACK_FLIP
+end
 
 local function DropScanner(tool)
   if not tool or tool ~= scannerTool then return end
@@ -161,7 +214,10 @@ local function DropScanner(tool)
   local Character = LocalPlayer.Character
   local Root = Character and Character:FindFirstChild("HumanoidRootPart")
   local Drops = workspace:FindFirstChild("Drops")
-  if not Handle or not Root or not Drops then return end
+  if not Handle or not Root or not Drops then
+    warn("[NVCS-3000] Drop failed (missing Handle / Root / workspace.Drops):", Handle, Root, Drops)
+    return
+  end
 
   local Look = Root.CFrame.LookVector * Vector3.new(1, 0, 1)
   if Look.Magnitude < 0.05 then
@@ -181,7 +237,7 @@ local function DropScanner(tool)
   Main.Transparency = 1
   Main.CanCollide = false
   Main.Massless = true
-  Main.CollisionGroup = "ItemDrop"
+  pcall(function() Main.CollisionGroup = "ItemDrop" end)
   Main.CFrame = SpawnCF
   Main.Parent = Drop
 
@@ -190,7 +246,7 @@ local function DropScanner(tool)
   Pickup.Size = Vector3.one
   Pickup.Transparency = 1
   Pickup.CanCollide = true
-  Pickup.CollisionGroup = "ItemDrop"
+  pcall(function() Pickup.CollisionGroup = "ItemDrop" end)
   Pickup.CustomPhysicalProperties = PhysicalProperties.new(1, 2, 0, 100, 100)
   Pickup.CFrame = SpawnCF
   Pickup.Parent = Drop
@@ -202,8 +258,15 @@ local function DropScanner(tool)
   PickupWeld.C1 = CFrame.identity
   PickupWeld.Parent = Drop
 
-  -- Same floor offset as before, plus a 180 degree flip so the screen faces down
-  local FloorOffset = CFrame.new(0, -Pickup.Size.Y / 2 + Handle.Size.Y / 2, 0) * DROP_FLIP
+  -- Screen faces the floor; height is adjusted so it rests on the ground
+  local Rot = GetFaceDownRotation(Handle)
+  local Size = Handle.Size
+  local HalfHeight = 0.5 * (
+    math.abs(Rot.RightVector.Y) * Size.X
+    + math.abs(Rot.UpVector.Y) * Size.Y
+    + math.abs(Rot.LookVector.Y) * Size.Z
+  )
+  local FloorOffset = CFrame.new(0, -Pickup.Size.Y / 2 + HalfHeight, 0) * Rot
 
   local Visual = Handle:Clone()
   for _, d in ipairs(Visual:GetDescendants()) do
@@ -244,7 +307,7 @@ local function DropScanner(tool)
   Prompt.ObjectText = tool:GetAttribute("NameSingular") or "NVCS-3000"
   Prompt.HoldDuration = 0
   Prompt.MaxActivationDistance = 9
-  Prompt.Style = Enum.ProximityPromptStyle.Custom
+  pcall(function() Prompt.Style = Enum.ProximityPromptStyle.Custom end)
   Prompt.Parent = Drop
 
   CollectionService:AddTag(Drop, "ItemDrop")
@@ -273,8 +336,9 @@ local function DropScanner(tool)
   end)
 end
 
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-  if gameProcessed then return end
+-- Drop key handler (no gameProcessed block; ignores typing in text boxes)
+UserInputService.InputBegan:Connect(function(input)
+  if UserInputService:GetFocusedTextBox() then return end
 
   local Character = LocalPlayer.Character
   local held = Character and Character:FindFirstChild(ItemName)
@@ -286,7 +350,10 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     return
   end
 
-  DropScanner(held)
+  local ok, err = pcall(DropScanner, held)
+  if not ok then
+    warn("[NVCS-3000] DropScanner error:", err)
+  end
 end)
 
 -- ===== DELETE TOOL ON 'L' PRESS =====
@@ -606,7 +673,12 @@ local function syncAllRooms()
 end
 
 -- ===== SET UP ROOM & WORKSPACE OBSERVERS =====
-local currentRoomsFolder = workspace:WaitForChild("CurrentRooms")
+local currentRoomsFolder = workspace:WaitForChild("CurrentRooms", 10)
+if not currentRoomsFolder then
+  warn("[NVCS-3000] workspace.CurrentRooms not found, using an empty folder")
+  currentRoomsFolder = Instance.new("Folder")
+  currentRoomsFolder.Name = "CurrentRooms"
+end
 currentRoomsFolder.ChildAdded:Connect(function(child) task.wait(0.1); cloneRoomIntoViewport(child) end)
 currentRoomsFolder.ChildRemoved:Connect(function(child) removeRoomFromViewport(child.Name) end)
 
