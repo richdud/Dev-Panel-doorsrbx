@@ -1,7 +1,5 @@
 --[[
-  NVCS-3000 Scanner - Complete Master Version (V2.4 Release)
-  - Drop now lays scanner flat (screen facing floor) with random spin.
-  - Drop key handler fixed (no gameProcessed block, defined after DropScanner).
+  NVCS-3000 Scanner - Complete Master Version (V2.3 Release)
   - Added drop/pickup mechanic (X / Backspace / DPadDown) matching Honcho's Mug.
   - Added workspace.LiveEntities folder observer and scanning.
   - Fixed third-person Fake Scanner hand positioning (No longer halfway inside the palm).
@@ -153,45 +151,8 @@ if not HiddenDrops then
   HiddenDrops.Parent = ReplicatedStorage
 end
 
-local DropRandom = Random.new()
-
-local function GetFlatDropRotation(Handle)
-  local Screen = Handle:FindFirstChild("Screen")
-
-  local face = Enum.NormalId.Front
-  local okFace, gotFace = pcall(function()
-    return screenUI.Face
-  end)
-  if okFace and gotFace then
-    face = gotFace
-  end
-
-  local normal = Vector3.FromNormalId(face)
-  if Screen and Screen:IsA("BasePart") then
-    local rel = Handle.CFrame:ToObjectSpace(Screen.CFrame)
-    normal = rel:VectorToWorldSpace(normal)
-  end
-  normal = normal.Unit
-
-  local down = Vector3.new(0, -1, 0)
-  local dot = math.clamp(normal:Dot(down), -1, 1)
-  local align
-
-  if dot > 0.9999 then
-    align = CFrame.identity
-  elseif dot < -0.9999 then
-    local axis = normal:Cross(Vector3.xAxis)
-    if axis.Magnitude < 0.01 then
-      axis = normal:Cross(Vector3.zAxis)
-    end
-    align = CFrame.fromAxisAngle(axis.Unit, math.pi)
-  else
-    align = CFrame.fromAxisAngle(normal:Cross(down).Unit, math.acos(dot))
-  end
-
-  local yaw = CFrame.Angles(0, DropRandom:NextNumber(0, math.pi * 2), 0)
-  return yaw * align
-end
+-- Flips the dropped scanner so the screen faces the floor instead of up
+local DROP_FLIP = CFrame.Angles(math.pi, 0, 0)
 
 local function DropScanner(tool)
   if not tool or tool ~= scannerTool then return end
@@ -209,8 +170,7 @@ local function DropScanner(tool)
     Look = Look.Unit
   end
 
-  local SpawnPos = (Root.CFrame * CFrame.new(0, -1, -2)).Position
-  local SpawnCF = CFrame.new(SpawnPos)
+  local SpawnCF = CFrame.lookAlong((Root.CFrame * CFrame.new(0, -1, -2)).Position, Look, Vector3.yAxis)
 
   local Drop = Instance.new("Model")
   Drop.Name = ItemName
@@ -242,15 +202,8 @@ local function DropScanner(tool)
   PickupWeld.C1 = CFrame.identity
   PickupWeld.Parent = Drop
 
-  -- Screen faces the floor, random spin each drop
-  local Rot = GetFlatDropRotation(Handle)
-  local Size = Handle.Size
-  local HalfHeight = 0.5 * (
-    math.abs(Rot.RightVector.Y) * Size.X
-    + math.abs(Rot.UpVector.Y) * Size.Y
-    + math.abs(Rot.LookVector.Y) * Size.Z
-  )
-  local VisualOffset = CFrame.new(0, -Pickup.Size.Y / 2 + HalfHeight, 0) * Rot
+  -- Same floor offset as before, plus a 180 degree flip so the screen faces down
+  local FloorOffset = CFrame.new(0, -Pickup.Size.Y / 2 + Handle.Size.Y / 2, 0) * DROP_FLIP
 
   local Visual = Handle:Clone()
   for _, d in ipairs(Visual:GetDescendants()) do
@@ -261,7 +214,7 @@ local function DropScanner(tool)
   Visual.Anchored = false
   Visual.CanCollide = false
   Visual.Massless = true
-  Visual.CFrame = SpawnCF * VisualOffset
+  Visual.CFrame = SpawnCF * FloorOffset
   for _, Part in ipairs(Visual:GetDescendants()) do
     if Part:IsA("BasePart") then
       Part.Anchored = false
@@ -274,7 +227,7 @@ local function DropScanner(tool)
   local VisualWeld = Instance.new("Weld")
   VisualWeld.Part0 = Main
   VisualWeld.Part1 = Visual
-  VisualWeld.C0 = VisualOffset
+  VisualWeld.C0 = FloorOffset
   VisualWeld.C1 = CFrame.identity
   VisualWeld.Parent = Drop
 
@@ -320,9 +273,8 @@ local function DropScanner(tool)
   end)
 end
 
--- Drop key handler (defined AFTER DropScanner; no gameProcessed check)
-UserInputService.InputBegan:Connect(function(input)
-  if UserInputService:GetFocusedTextBox() then return end
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+  if gameProcessed then return end
 
   local Character = LocalPlayer.Character
   local held = Character and Character:FindFirstChild(ItemName)
