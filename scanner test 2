@@ -1,0 +1,166 @@
+local DropRandom = Random.new()
+
+local function GetFlatDropRotation(Handle)
+  local Screen = Handle:FindFirstChild("Screen")
+
+  local face = Enum.NormalId.Front
+  local okFace, gotFace = pcall(function()
+    return screenUI.Face
+  end)
+  if okFace and gotFace then
+    face = gotFace
+  end
+
+  local normal = Vector3.FromNormalId(face)
+  if Screen and Screen:IsA("BasePart") then
+    local rel = Handle.CFrame:ToObjectSpace(Screen.CFrame)
+    normal = rel:VectorToWorldSpace(normal)
+  end
+  normal = normal.Unit
+
+  local down = Vector3.new(0, -1, 0)
+  local dot = math.clamp(normal:Dot(down), -1, 1)
+  local align
+
+  if dot > 0.9999 then
+    align = CFrame.identity
+  elseif dot < -0.9999 then
+    local axis = normal:Cross(Vector3.xAxis)
+    if axis.Magnitude < 0.01 then
+      axis = normal:Cross(Vector3.zAxis)
+    end
+    align = CFrame.fromAxisAngle(axis.Unit, math.pi)
+  else
+    align = CFrame.fromAxisAngle(normal:Cross(down).Unit, math.acos(dot))
+  end
+
+  local yaw = CFrame.Angles(0, DropRandom:NextNumber(0, math.pi * 2), 0)
+  return yaw * align
+end
+
+local function DropScanner(tool)
+  if not tool or tool ~= scannerTool then return end
+
+  local Handle = tool:FindFirstChild("Handle")
+  local Character = LocalPlayer.Character
+  local Root = Character and Character:FindFirstChild("HumanoidRootPart")
+  local Drops = workspace:FindFirstChild("Drops")
+  if not Handle or not Root or not Drops then return end
+
+  local Look = Root.CFrame.LookVector * Vector3.new(1, 0, 1)
+  if Look.Magnitude < 0.05 then
+    Look = Vector3.zAxis
+  else
+    Look = Look.Unit
+  end
+
+  local SpawnPos = (Root.CFrame * CFrame.new(0, -1, -2)).Position
+  local SpawnCF = CFrame.new(SpawnPos)
+
+  local Drop = Instance.new("Model")
+  Drop.Name = ItemName
+
+  local Main = Instance.new("Part")
+  Main.Name = "Main"
+  Main.Size = Vector3.one
+  Main.Transparency = 1
+  Main.CanCollide = false
+  Main.Massless = true
+  Main.CollisionGroup = "ItemDrop"
+  Main.CFrame = SpawnCF
+  Main.Parent = Drop
+
+  local Pickup = Instance.new("Part")
+  Pickup.Name = "ItemDropPickup"
+  Pickup.Size = Vector3.one
+  Pickup.Transparency = 1
+  Pickup.CanCollide = true
+  Pickup.CollisionGroup = "ItemDrop"
+  Pickup.CustomPhysicalProperties = PhysicalProperties.new(1, 2, 0, 100, 100)
+  Pickup.CFrame = SpawnCF
+  Pickup.Parent = Drop
+
+  local PickupWeld = Instance.new("Weld")
+  PickupWeld.Part0 = Main
+  PickupWeld.Part1 = Pickup
+  PickupWeld.C0 = CFrame.identity
+  PickupWeld.C1 = CFrame.identity
+  PickupWeld.Parent = Drop
+
+  -- Screen faces the floor, random spin each drop
+  local Rot = GetFlatDropRotation(Handle)
+  local Size = Handle.Size
+  local HalfHeight = 0.5 * (
+    math.abs(Rot.RightVector.Y) * Size.X
+    + math.abs(Rot.UpVector.Y) * Size.Y
+    + math.abs(Rot.LookVector.Y) * Size.Z
+  )
+  local VisualOffset = CFrame.new(0, -Pickup.Size.Y / 2 + HalfHeight, 0) * Rot
+
+  local Visual = Handle:Clone()
+  for _, d in ipairs(Visual:GetDescendants()) do
+    if d:IsA("Sound") or d:IsA("Script") or d:IsA("LocalScript") or d:IsA("ScreenGui") then
+      d:Destroy()
+    end
+  end
+  Visual.Anchored = false
+  Visual.CanCollide = false
+  Visual.Massless = true
+  Visual.CFrame = SpawnCF * VisualOffset
+  for _, Part in ipairs(Visual:GetDescendants()) do
+    if Part:IsA("BasePart") then
+      Part.Anchored = false
+      Part.CanCollide = false
+      Part.Massless = true
+    end
+  end
+  Visual.Parent = Drop
+
+  local VisualWeld = Instance.new("Weld")
+  VisualWeld.Part0 = Main
+  VisualWeld.Part1 = Visual
+  VisualWeld.C0 = VisualOffset
+  VisualWeld.C1 = CFrame.identity
+  VisualWeld.Parent = Drop
+
+  local Gyro = Instance.new("BodyGyro")
+  Gyro.MaxTorque = Vector3.new(1e5, 1e5, 1e5)
+  Gyro.P = 3000
+  Gyro.D = 500
+  Gyro.CFrame = SpawnCF
+  Gyro.Parent = Pickup
+
+  local Prompt = Instance.new("ProximityPrompt")
+  Prompt.Name = "ModulePrompt"
+  Prompt.ActionText = "Obtain"
+  Prompt.ObjectText = tool:GetAttribute("NameSingular") or "NVCS-3000"
+  Prompt.HoldDuration = 0
+  Prompt.MaxActivationDistance = 9
+  Prompt.Style = Enum.ProximityPromptStyle.Custom
+  Prompt.Parent = Drop
+
+  CollectionService:AddTag(Drop, "ItemDrop")
+  Drop:SetAttribute("Pickup", ItemName)
+  Drop.PrimaryPart = Main
+
+  local Parked = Instance.new("ObjectValue")
+  Parked.Name = "ParkedTool"
+  Parked.Value = tool
+  Parked.Parent = Drop
+
+  tool.Parent = HiddenDrops
+  Drop.Parent = Drops
+  Pickup.AssemblyLinearVelocity = Look * 20 + Vector3.yAxis * 0.5
+  Pickup.AssemblyAngularVelocity = Vector3.zero
+
+  Prompt.Triggered:Connect(function(player)
+    if player ~= LocalPlayer then return end
+
+    local Stored = Parked.Value
+    if Stored and Stored.Parent then
+      Stored.Parent = LocalPlayer.Backpack
+    end
+
+    Drop:Destroy()
+  end)
+end
