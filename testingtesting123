@@ -1394,7 +1394,7 @@ vMorphIcons:SetAspectRatio(1.66)
 
 for _, name in ipairs({
   "Figure", "Gloombat", "Rush", "Ambush", "Seek", "Grumble", "Groundskeeper",
-  "Screech", "Eyes", "Halt", "A-60 (BUGGED/LOUD SOUND) ", "A-120 (BUGGED/LOUD SOUND) ", "Dread", "Honcho",
+  "Screech", "Eyes", "Halt", "A-60 (BUGGED/LOUD SOUND)", "A-120 (BUGGED/LOUD SOUND)", "Dread", "Honcho",
 }) do
   vMorphIcons:AddIcon(name, name, "Entity", name, nil, function()
     local ok, err = pcall(MorphActions[name])
