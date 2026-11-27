@@ -1381,8 +1381,8 @@ do
   MorphActions.Screech = transformIntoScreech
   MorphActions.Eyes = transformIntoEyes
   MorphActions.Halt = transformIntoHalt
-  MorphActions["A-60 (BUGGED/LOUD SOUND)"] = transformIntoA60
-  MorphActions["A-120 (BUGGED/LOUD SOUND)"] = transformIntoA120
+MorphActions["A-60"] = transformIntoA60
+MorphActions["A-120"] = transformIntoA120
   MorphActions.Dread = transformIntoDread
   MorphActions.Honcho = transformIntoHoncho
   MorphActions.Reset = resetMorph
@@ -1394,15 +1394,24 @@ vMorphIcons:SetAspectRatio(1.66)
 
 for _, name in ipairs({
   "Figure", "Gloombat", "Rush", "Ambush", "Seek", "Grumble", "Groundskeeper",
-  "Screech", "Eyes", "Halt", "A-60 (BUGGED/LOUD SOUND)", "A-120 (BUGGED/LOUD SOUND)", "Dread", "Honcho",
+  "Screech", "Eyes", "Halt", "A-60", "A-120", "Dread", "Honcho",
 }) do
-  vMorphIcons:AddIcon(name, name, "Entity", name, nil, function()
+local displayName = name
+
+if name == "A-60" then
+    displayName = "A-60 (BUGGED/LOUD SOUND)"
+elseif name == "A-120" then
+    displayName = "A-120 (BUGGED/LOUD SOUND)"
+end
+
+vMorphIcons:AddIcon(name, displayName, "Entity", name, nil, function()
     local ok, err = pcall(MorphActions[name])
     if not ok then
-      warn("[Morphs] " .. name .. " failed:", err)
-      pcall(MorphActions.Reset)
+        warn("[Morphs] " .. name .. " failed:", err)
+        pcall(MorphActions.Reset)
     end
-  end, true)
+end, true)
+
 end
 
 local resetIcon = vMorphIcons:AddIcon("ResetMorph", "RESET MORPH", "Entity", "RESET MORPH", nil, function()
