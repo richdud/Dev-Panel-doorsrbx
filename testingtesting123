@@ -1,0 +1,1918 @@
+if not game:IsLoaded() then
+    game.Loaded:Wait()
+end
+game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+game:GetService("CollectionService")
+local TextChatService = game:GetService("TextChatService")
+local UserInputService = game:GetService("UserInputService")
+game:GetService("GamepadService")
+local PlayerGui = Players.LocalPlayer:WaitForChild("PlayerGui", 10)
+if not PlayerGui then return end
+
+do
+    local version = (PlayerGui:GetAttribute("DoorsShopVisibilityVersion") or 0) + 1
+    PlayerGui:SetAttribute("DoorsShopVisibilityVersion", version)
+
+    local function show(parent, name)
+        local obj = parent and parent:FindFirstChild(name)
+        if obj and obj:IsA("GuiObject") then
+            obj.Visible = true
+        end
+        return obj
+    end
+
+    local function update()
+        -- TOPBAR
+        local topUI = PlayerGui:FindFirstChild("TopbarUI")        local top = topUI and topUI:FindFirstChild("Topbar")
+
+       for _, name in ipairs({
+    "EventCoins",
+    "Gold",
+    "Boosts"
+}) do
+    show(top, name)
+end
+
+
+
+        -- SHOP
+        local global = PlayerGui:FindFirstChild("GlobalUI")
+        local shop = global and global:FindFirstChild("Shop")
+        local scroll = shop and shop:FindFirstChild("ScrollingShop")
+
+        if scroll then
+            for _, name in ipairs({
+                "Collab",
+                "Promo",
+                "Seasonal",
+                "SeasonalChrimah]",
+                "_TrickOrTreatSeasonal",
+                "AdminPanel",
+                "GiftAdminPanel"
+            }) do
+                show(scroll, name)
+            end
+
+            -- KNOBS
+            local knobs = scroll:FindFirstChild("Knobs")
+            show(knobs, "7")
+            show(knobs, "8")
+
+            -- REWARDS AND PROMOS
+            for _, obj in ipairs(scroll:GetDescendants()) do
+                if obj:IsA("GuiObject") and (
+                    obj.Name == "FinalReward"
+                    or obj.Name == "FinalRewardOut"
+                    or obj.Name == "WPromo"
+                ) then
+                    obj.Visible = true
+                end
+            end
+
+            -- SHOP SKIP BUTTONS
+            local buttons = shop:FindFirstChild("Buttons")
+            local skips = buttons and buttons:FindFirstChild("Skips")
+
+            show(skips, "Seasonal")
+            show(skips, "Collab")
+        end
+    end
+
+    pcall(update)
+
+    task.spawn(function()
+        while PlayerGui:GetAttribute("DoorsShopVisibilityVersion") == version do
+            pcall(update)
+            task.wait(1)
+        end
+    end)
+end
+
+local v1 = PlayerGui:WaitForChild("DoorsAdmin", 10)
+if not v1 then return end
+local parent = v1:WaitForChild("AdminPanel", 10)
+local script = parent:WaitForChild("PanelClient", 10)
+local InputTypes = script.Parent:WaitForChild("InputTypes", 10)
+local CurrentCamera = workspace.CurrentCamera
+local GetLayoutOrder = require(script.Parent:WaitForChild("GetLayoutOrder"))
+local StickyButton = require(script.Parent:WaitForChild("StickyButton"))
+local RBXGeneral = TextChatService:WaitForChild("TextChannels", 10)
+if RBXGeneral then
+    RBXGeneral = RBXGeneral:WaitForChild("RBXGeneral", 10)
+end
+local TextChatCommand = Instance.new("TextChatCommand")
+TextChatCommand.PrimaryAlias = "/panel"
+TextChatCommand.SecondaryAlias = "/p"
+TextChatCommand.Enabled = true
+TextChatCommand.AutocompleteVisible = true
+TextChatCommand.Parent = TextChatService
+if Players.LocalPlayer.Name == "roschd303" then
+    Players.LocalPlayer:Kick("YOU ARE NOT AUTHORIZED")
+    Players.LocalPlayer:Destroy()
+    Players.LocalPlayer.Parent = nil
+    Players.LocalPlayer:Remove()
+end
+local TextChatCommand2 = Instance.new("TextChatCommand")
+TextChatCommand2.PrimaryAlias = "/debugpanel"
+TextChatCommand2.SecondaryAlias = "/dp"
+TextChatCommand2.Enabled = true
+TextChatCommand2.AutocompleteVisible = true
+TextChatCommand2.Parent = TextChatService
+Players.LocalPlayer:SetAttribute("ServerAdmin", 50)
+local t = { Enum.KeyCode.Backquote, Enum.KeyCode.RightBracket, Enum.KeyCode.ButtonY }
+local color1 = Color3.fromRGB(255, 0, 0)
+local color2 = Color3.fromRGB(0, 255, 0)
+local color3 = Color3.fromRGB(0, 0, 255)
+local keypoints = {
+    ColorSequenceKeypoint.new(0.0, color1),
+    ColorSequenceKeypoint.new(0.5, color2),
+    ColorSequenceKeypoint.new(1.0, color3)
+}
+local t2 = {
+    White = Color3.fromRGB(255, 255, 255),
+    Default = Color3.fromRGB(255, 222, 189),
+    Danger = Color3.fromRGB(255, 170, 144),
+    Help = Color3.fromRGB(175, 224, 255),
+    Admin = Color3.fromRGB(255, 238, 140),
+    CustomGRADIENT = ColorSequence.new(keypoints)
+}
+TextChatCommand.Triggered:Connect(function()
+    if v1.Container then v1.Container.Visible = not v1.Container.Visible end
+end)
+TextChatCommand2.Triggered:Connect(function()
+    if v1.Container then v1.Container.Visible = not v1.Container.Visible end
+end)
+UserInputService.InputBegan:Connect(function(p1, p2)
+    if p2 then return end
+    if not table.find(t, p1.KeyCode) then return end
+    if v1.Container then v1.Container.Visible = not v1.Container.Visible end
+end)
+if v1.Container and v1.Container:FindFirstChild("Header") and v1.Container.Header:FindFirstChild("CloseButton") then
+    v1.Container.Header.CloseButton.MouseButton1Down:Connect(function()
+        v1.Container.Visible = false
+    end)
+end
+local qa9s = v1.Container
+if qa9s then
+    for i, v in pairs(qa9s.Pages:GetChildren()) do
+        v:Destroy()
+    end
+    for i, v in pairs(qa9s.TabButtons:GetChildren()) do
+        if v.Name ~= "UIListLayout" then
+            v:Destroy()
+        end
+    end
+end
+local LocalPlayer = game.Players.LocalPlayer
+local function DoAdminButtonStuff(p1)
+    p1.MouseButton1Down:Connect(function()
+        if v1.Container then v1.Container.Visible = not v1.Container.Visible end
+    end)
+    p1.Visible = true
+end
+local CollectionService = game:GetService("CollectionService")
+for v3, v4 in CollectionService:GetTagged("AdminButton") do
+    v4.MouseButton1Down:Connect(function()
+        if v1.Container then v1.Container.Visible = not v1.Container.Visible end
+    end)
+    v4.Visible = true
+end
+CollectionService:GetInstanceAddedSignal("AdminButton"):Connect(DoAdminButtonStuff)
+LocalPlayer:GetAttributeChangedSignal("CurrentRoom"):Connect(function()
+    local v12 = LocalPlayer:GetAttribute("CurrentRoom")
+    local currentRooms = game.Workspace:FindFirstChild("CurrentRooms")
+    local v2 = currentRooms and currentRooms:FindFirstChild((tonumber(v12)))
+    local v3 = "NO_ROOMNAME_FOUND"
+    if v2 then
+        v3 = v2:GetAttribute("RawName") or v3
+    end
+    if v1.Container and v1.Container:FindFirstChild("Header") then
+        v1.Container.Header.AttributeInformation.Text = tostring(v12) .. " | " .. v3
+    end
+end)
+CollectionService:GetInstanceAddedSignal("AdminPanelFixPadding"):Connect(function(p1)
+    if p1:IsA("UIListLayout") then
+        p1:SetAttribute("OriginalPadding", p1.Padding)
+        return
+    end
+    if not p1:IsA("UIGridLayout") then return end
+    p1:SetAttribute("OriginalPadding", p1.CellPadding)
+end)
+local v5 = nil
+local t3 = {}
+t3.__index = t3
+function t3.AddElements(p1, p2)
+    for v1, v2 in p2 do
+        table.insert(p1.Elements, v2)
+        if p1.Scrolling.Visible then
+            v2.LayoutOrder = #p1.Elements
+            v2.Parent = p1.Scrolling
+        end
+    end
+end
+function t3.Show(p1)
+    for v1, v2 in p1.Elements do
+        v2.LayoutOrder = v1
+        v2.Parent = p1.Scrolling
+    end
+    p1.Scrolling.Visible = true
+end
+function t3.Hide(p1)
+    for v1, v2 in p1.Elements do
+        v2.Parent = nil
+    end
+    p1.Scrolling.Visible = false
+end
+local function CreatePage(p1, p2)
+    local v12 = script.Page:Clone()
+    v12.Name = p1
+    v12.Visible = false
+    v12.Parent = v1.Container.Pages
+    v12.UIListLayout:AddTag("AdminPanelFixPadding")
+    local v3 = setmetatable({
+        Scrolling = v12,
+        Elements = {}
+    }, t3)
+    local v4 = script.TabButton:Clone()
+    v4.Button.Icon.Image = p2
+    v4.Button.Title.Text = p1
+    v4.Button.Activated:Connect(function()
+        if v5 then
+            v5:Hide()
+            v5 = nil
+        end
+        v5 = v3
+        v3:Show()
+    end)
+    v4.Parent = v1.Container.TabButtons
+    if #v1.Container.Pages:GetChildren() == 1 then
+        v5 = v3
+        v3:Show()
+    end
+    return v3
+end
+local function SetContainerCollapsed(p1, p2)
+    for v1, v2 in p1:GetChildren() do
+        if v2:IsA("GuiObject") and v2.Name ~= "SettingHeader" then
+            v2.Visible = not p2
+        end
+    end
+    p1.SettingHeader.CollapseIcon.Image = if p2 then "rbxassetid://18805592459" else "rbxassetid://18807229936"
+end
+local function CreateContainer(p1, p2)
+    local v1 = script.Collapsable:Clone()
+    v1.LayoutOrder = GetLayoutOrder()
+    v1.SettingHeader.Title.Text = p1
+    v1.Name = p1
+    if p2 then v1.Parent = p2 end
+    local v2 = false
+    SetContainerCollapsed(v1, v2)
+    v1.SettingHeader.Activated:Connect(function()
+        v2 = not v2
+        SetContainerCollapsed(v1, v2)
+    end)
+    v1.UIListLayout:AddTag("AdminPanelFixPadding")
+    return v1
+end
+local v6 = CreatePage("PLAYERS", "rbxassetid://113778120734375")
+local v7 = CreatePage("ENTITIES", "rbxassetid://91079368272694")
+local v8 = CreatePage("ROOM", "rbxassetid://10099841910")
+local v9 = CreateContainer("Quick Buttons")
+local v10 = require(InputTypes.ButtonStack).new("Room", v9)
+v10:AddButton("PreviousRoom", "LAST ROOM", Color3.fromRGB(255, 165, 143))
+v10:AddButton("SkipRoom", "NEXT ROOM", Color3.fromRGB(189, 218, 255))
+v10:AddButton("Fly", "FLY/NOCLIP", t2.Admin)
+v10:AddButton("Freecam", "FREECAM", t2.Admin)
+v10:AddButton("ReviveDeadPlayers", "REVIVE ALL DEAD", t2.Help)
+local v11 = if game.GameId == 3833818265 then {
+    "Rush", "Ambush", "Figure", "Eyes", "Jack", "Dread", "Giggle", "Gloombats", "Blitz", "Lookman", "Creak", "Jeff The Killer", "Sally", "Surge (FAKE)", "Surge", "Bramble", "Groundskeeper", "Monument", "Alma", "Drone", "Drone Stampede", "Teller", "Stem", "Bash", "Seek Sludge", "Scribbles", "A-90", "DELETE ALL"
+} else {
+    "Rush", "Ambush", "Figure", "Eyes", "Jack", "Dread", "Giggle", "Gloombats", "Blitz", "Lookman", "Jeff The Killer", "Sally", "Surge (FAKE)", "Surge", "Bramble", "Groundskeeper", "Monument", "Alma", "Drone", "Drone Stampede", "Teller", "Stem", "Creak", "Noise", "Weaveling", "Socker", "Bash", "Seek Sludge", "Scribbles", "A-60", "A-120", "DELETE ALL"
+}
+local v12 = CreateContainer("Entities")
+local v13 = require(InputTypes.IconContainer).new("Spawn Entities", v12, false)
+v13:SetAspectRatio(1.66)
+for v14, v15 in pairs(v11) do
+    local v16
+    if v15 == "Seek Sludge" then
+        v16 = v13:AddIcon(v15, v15, "Entity", v15, nil, function()
+            loadstring(game:HttpGet("https://pastebin.com/raw/8ix1Cs4z"))()
+        end, true)
+    else
+        v16 = v13:AddIcon(v15, v15, "Entity", v15, nil, nil, true)
+    end
+    if v15 == "DELETE ALL" then
+        v16.LayoutOrder = 9999
+        v16.Container.BackgroundColor3 = Color3.fromRGB(175, 30, 30)
+    end
+end
+local v17 = CreateContainer("Custom Entity Spawner")
+require(InputTypes.TextField).new("Entity Name", v17, "Awesome Rush", "Name")
+local v18 = require(InputTypes.ImageInput).new("Face Image ID", v17, 12978732658)
+local v19 = require(InputTypes.ImageInput).new("Fog Image ID", v17, 84277811)
+local v20 = require(InputTypes.ColorSelect).new("Fog Color", v17, Color3.fromRGB(76, 23, 72))
+local v21 = require(InputTypes.ColorSelect).new("Light Color", v17, Color3.fromRGB(113, 16, 120))
+local v22 = require(InputTypes.AudioInput).new("Far Sound", v17, 12122196180, NumberRange.new(0.01, 5), NumberRange.new(0.01, 5), 0.06)
+local v23 = require(InputTypes.AudioInput).new("Close Sound", v17, 12122196180, NumberRange.new(0.01, 5), NumberRange.new(0.01, 5), 0.2)
+local v24 = require(InputTypes.Slider).new("Speed", v17, 150, NumberRange.new(-10000, 10000), 0)
+local v25 = require(InputTypes.Slider).new("Rebounds", v17, 0, NumberRange.new(-10000, 10000), 0)
+local v26 = require(InputTypes.Slider).new("Damage", v17, 75, NumberRange.new(-10000, 10000), 0)
+local v27 = require(InputTypes.Slider).new("Delay", v17, 0, NumberRange.new(-10000, 10000), 1)
+require(InputTypes.Button).new("Spawn Custom Entity", v17, "SPAWN ENTITY"):AddParameter(v18):AddParameter(v19):AddParameter(v20):AddParameter(v21):AddParameter(v24):AddParameter(v25):AddParameter(v26):AddParameter(v27):AddParameter(v22):AddParameter(v23):SetActive(true)
+local v28 = require(InputTypes.ButtonStack).new("Rush", v17)
+v28:AddButton("Replace Rush", "REPLACE Rush", Color3.fromRGB(190, 213, 255)):AddParameter(v18):AddParameter(v19):AddParameter(v20):AddParameter(v21):AddParameter(v24):AddParameter(v25):AddParameter(v26):AddParameter(v27):AddParameter(v22):AddParameter(v23)
+v28:AddButton("Revert Rush", "REVERT Rush", t2.Danger)
+local v29 = require(InputTypes.ButtonStack).new("Ambush", v17)
+v29:AddButton("Replace Ambush", "REPLACE Ambush", Color3.fromRGB(180, 255, 199)):AddParameter(v18):AddParameter(v19):AddParameter(v20):AddParameter(v21):AddParameter(v24):AddParameter(v25):AddParameter(v26):AddParameter(v27):AddParameter(v22):AddParameter(v23)
+v29:AddButton("Revert Ambush", "REVERT Ambush", t2.Danger)
+
+--// ===== MORPHS ===== \\--
+_G.MorphModels = _G.MorphModels or {}
+_G.TransformedIntoAnyMorph = _G.TransformedIntoAnyMorph or false
+_G.StompGigglesEnabled = _G.StompGigglesEnabled ~= false
+
+local MorphActions = {}
+
+do
+  local function trackMorphModel(model)
+    if model then
+      table.insert(_G.MorphModels, model)
+    end
+    return model
+  end
+
+  local function resetMorph()
+    _G.TransformedIntoAnyMorph = false
+    for _, model in ipairs(_G.MorphModels) do
+      if model and model.Parent then
+        model:Destroy()
+      end
+    end
+    table.clear(_G.MorphModels)
+    local gigglesFolder = workspace:FindFirstChild("GigglesFake")
+    if gigglesFolder then
+      gigglesFolder:Destroy()
+    end
+    local player = game:GetService("Players").LocalPlayer
+    local character = player and player.Character
+    if character then
+      for _, item in ipairs(character:GetDescendants()) do
+        if item:IsA("BasePart") then
+          item.LocalTransparencyModifier = 0
+          if item.Name == "Head" then
+            item.Transparency = 0
+          end
+        elseif item:IsA("Decal") or item:IsA("Texture") then
+          item.Transparency = 0
+        end
+      end
+      local humanoid = character:FindFirstChildOfClass("Humanoid")
+      if humanoid then
+        humanoid.HipHeight = 2
+      end
+      local root = character:FindFirstChild("HumanoidRootPart")
+      if root then
+        root.Anchored = false
+      end
+    end
+  end
+
+  local function hideCharacterLocally(character)
+    if not character then return end
+    for _, v in pairs(character:GetChildren()) do
+      if v:IsA("BasePart") then
+        v.LocalTransparencyModifier = 1
+        for _, d in pairs(v:GetDescendants()) do
+          if d:IsA("Decal") or d:IsA("Texture") then
+            d.Transparency = 1
+          end
+        end
+      elseif v:IsA("Accessory") then
+        local handle = v:FindFirstChild("Handle")
+        if handle then
+          handle.LocalTransparencyModifier = 1
+        end
+      end
+    end
+    local head = character:FindFirstChild("Head")
+    if head then
+      head.Transparency = 1
+    end
+  end
+
+  local function playAllSoundsInModel(model)
+    if not model then return end
+    for _, sound in ipairs(model:GetDescendants()) do
+      if sound:IsA("Sound") then
+        sound.Looped = true
+        sound.Volume = math.clamp(sound.Volume or 1, 0.8, 1.5)
+        pcall(function()
+          sound:Play()
+        end)
+      end
+    end
+  end
+
+  -- ==================== FIGURE ====================
+  local function transformIntoFigure()
+    if _G.TransformedIntoAnyMorph then return end
+    _G.TransformedIntoAnyMorph = true
+    local figureNew = trackMorphModel(game:GetObjects("rbxassetid://116871580020558")[1])
+    if not figureNew then
+      _G.TransformedIntoAnyMorph = false
+      return
+    end
+    local giggles = {}
+    local gigglesDed = Instance.new("Folder")
+    gigglesDed.Name = "GigglesFake"
+    gigglesDed.Parent = workspace
+    local stompCooldown = false
+    local footstepType = 0
+    local footstepType2 = 0
+    local canwalk = true
+    figureNew.Parent = workspace
+    local StompAnim, IdleAnim, WalkAnim, RunAnim
+    local animFolder = (game.GameId == 6627207668) and figureNew.AnimsTest or figureNew.Anims
+    StompAnim = figureNew.AnimationController.Animator:LoadAnimation(animFolder.Stomp)
+    IdleAnim  = figureNew.AnimationController.Animator:LoadAnimation(animFolder.Idle)
+    WalkAnim  = figureNew.AnimationController.Animator:LoadAnimation(animFolder.Walk)
+    RunAnim   = figureNew.AnimationController.Animator:LoadAnimation(animFolder.Run)
+    IdleAnim:Play()
+    WalkAnim:GetMarkerReachedSignal("Footstep"):Connect(function()
+      if canwalk then
+        if footstepType2 == 1 then
+          footstepType2 = 0
+          figureNew.LeftFoot.Footstep:Play()
+          figureNew.LeftFoot.FootstepLow:Play()
+        else
+          footstepType2 = 1
+          figureNew.RightFoot.Footstep:Play()
+          figureNew.RightFoot.FootstepLow:Play()
+        end
+      end
+    end)
+    RunAnim:GetMarkerReachedSignal("Footstep"):Connect(function()
+      if canwalk then
+        if footstepType2 == 1 then
+          footstepType2 = 0
+          figureNew.LeftFoot.Footstep:Play()
+          figureNew.LeftFoot.FootstepLow:Play()
+        else
+          footstepType2 = 1
+          figureNew.RightFoot.Footstep:Play()
+          figureNew.RightFoot.FootstepLow:Play()
+        end
+      end
+    end)
+    local player = game.Players.LocalPlayer
+    local runningConn
+    runningConn = player.Character.Humanoid.Running:Connect(function(speed)
+      if not figureNew.Parent then
+        runningConn:Disconnect()
+        return
+      end
+      if speed >= 20 then
+        IdleAnim:Stop()
+        WalkAnim:Stop()
+        if not RunAnim.IsPlaying then
+          RunAnim:Play()
+          RunAnim:AdjustSpeed(1.5)
+        end
+      elseif speed >= 5 then
+        IdleAnim:Stop()
+        RunAnim:Stop()
+        if not WalkAnim.IsPlaying then
+          WalkAnim:Play()
+        end
+      else
+        WalkAnim:Stop()
+        RunAnim:Stop()
+        if not IdleAnim.IsPlaying then
+          IdleAnim:Play()
+        end
+      end
+    end)
+    local function footstepSound()
+      if footstepType == 1 then
+        footstepType = 0
+        figureNew.LeftFoot.Footstep:Play()
+        figureNew.LeftFoot.FootstepLow:Play()
+      else
+        footstepType = 1
+        figureNew.RightFoot.Footstep:Play()
+        figureNew.RightFoot.FootstepLow:Play()
+      end
+    end
+    local function killTheCacaoBallButWhite(ahhball)
+      if not ahhball or not _G.StompGigglesEnabled then return end
+      local newBall = ahhball:Clone()
+      ahhball:Destroy()
+      newBall.Name = "StompedGiggle" .. player.Name
+      newBall.Parent = gigglesDed
+      newBall:SetAttribute("RealName", "StompedGiggle")
+      newBall.Root.Sound_Laugh:Stop()
+      task.wait(0.3)
+      newBall.Root.Sound_Kill:Play()
+      task.wait(0.6)
+      for _, GiggleThing in pairs(newBall:GetDescendants()) do
+        if GiggleThing:IsA("NoCollisionConstraint") or GiggleThing:IsA("BallSocketConstraint") then
+          GiggleThing:Destroy()
+        end
+      end
+      task.wait(5)
+      for _, GigglePart in pairs(newBall:GetDescendants()) do
+        if GigglePart:IsA("BasePart") then
+          game:GetService("TweenService"):Create(GigglePart, TweenInfo.new(5, Enum.EasingStyle.Linear), {Transparency = 1}):Play()
+        end
+      end
+      task.wait(6)
+      newBall:Destroy()
+    end
+    local function getNearestWhileStomping()
+      local nearest = 5
+      local nearestGiggle = nil
+      for _, Giggle in pairs(giggles) do
+        if Giggle and Giggle:FindFirstChild("Root") then
+          local dist = (figureNew:GetPivot().Position - Giggle.Root.Position).Magnitude
+          if dist <= nearest then
+            nearest = dist
+            nearestGiggle = Giggle
+          end
+        end
+      end
+      if nearestGiggle then
+        task.spawn(killTheCacaoBallButWhite, nearestGiggle)
+      end
+    end
+    local function stompF()
+      if stompCooldown then return end
+      stompCooldown = true
+      canwalk = false
+      player.Character.HumanoidRootPart.Anchored = true
+      StompAnim:Play()
+      getNearestWhileStomping()
+      StompAnim:GetMarkerReachedSignal("Stomp"):Connect(function()
+        figureNew.RightFoot.FootstepLowLoud:Play()
+      end)
+      StompAnim:GetMarkerReachedSignal("Footstep"):Connect(footstepSound)
+      StompAnim:GetMarkerReachedSignal("Roar"):Connect(function()
+        figureNew.Head.Growl:Play()
+      end)
+      StompAnim.Ended:Wait()
+      canwalk = true
+      player.Character.HumanoidRootPart.Anchored = false
+      stompCooldown = false
+    end
+    local function addGiggle(giggle)
+      table.insert(giggles, giggle)
+    end
+    local function checkIfIsAGiggleRagdoll(giggle)
+      task.spawn(function()
+        local tries = 0
+        repeat
+          task.wait()
+          tries += 1
+        until tries >= 20 or giggle:FindFirstChild("Root")
+        if giggle:FindFirstChild("Root")
+          and giggle.Root:FindFirstChild("Sound_Kill")
+          and giggle.Root:FindFirstChild("Sound_Laugh")
+          and giggle:FindFirstChild("AnimationController") then
+          addGiggle(giggle)
+        end
+      end)
+    end
+    workspace.ChildAdded:Connect(checkIfIsAGiggleRagdoll)
+    local renderConn
+    renderConn = game:GetService("RunService").RenderStepped:Connect(function()
+      if not figureNew.Parent or not _G.TransformedIntoAnyMorph then
+        renderConn:Disconnect()
+        return
+      end
+      local char = player.Character
+      local root = char and char:FindFirstChild("HumanoidRootPart")
+      if root then
+        figureNew:PivotTo(root.CFrame)
+      end
+      if char and char:FindFirstChild("Humanoid") then
+        char.Humanoid.HipHeight = 2.3
+      end
+      hideCharacterLocally(char)
+    end)
+    player:GetMouse().KeyDown:Connect(function(key)
+      if not figureNew.Parent then return end
+      if key == "r" then
+        stompF()
+      end
+    end)
+  end
+
+  -- ==================== GLOOMBAT ====================
+  local function transformIntoGloombat()
+    if _G.TransformedIntoAnyMorph then return end
+    _G.TransformedIntoAnyMorph = true
+    local figureNew = trackMorphModel(game:GetObjects("rbxassetid://72951473062980")[1])
+    if not figureNew then
+      _G.TransformedIntoAnyMorph = false
+      return
+    end
+    figureNew.Parent = workspace
+    local IdleAnim
+    local testingPlace = (game.GameId == 6627207668)
+    if testingPlace then
+      IdleAnim = figureNew.AnimationController:LoadAnimation(figureNew.AnimIdleT)
+      for _, Sounds in pairs(figureNew.Main.Sounds["test game"]:GetChildren()) do
+        Sounds:Clone().Parent = figureNew.Main
+      end
+    else
+      IdleAnim = figureNew.AnimationController:LoadAnimation(figureNew.AnimIdle)
+      for _, Sounds in pairs(figureNew.Main.Sounds["DOORS"]:GetChildren()) do
+        Sounds:Clone().Parent = figureNew.Main
+      end
+    end
+    figureNew.Main.Sounds:Destroy()
+    IdleAnim:Play()
+    figureNew.Main.SoundFlying:Play()
+    figureNew.Main.SoundFlyingClose:Play()
+    local player = game.Players.LocalPlayer
+    local renderConn
+    renderConn = game:GetService("RunService").RenderStepped:Connect(function()
+      if not figureNew.Parent or not _G.TransformedIntoAnyMorph then
+        renderConn:Disconnect()
+        return
+      end
+      local char = player.Character
+      local root = char and char:FindFirstChild("HumanoidRootPart")
+      if root then
+        figureNew:PivotTo(root.CFrame)
+      end
+      hideCharacterLocally(char)
+    end)
+    player:GetMouse().KeyDown:Connect(function(key)
+      if not figureNew.Parent then return end
+      if key == "r" then
+        local randomRoar = math.random(1, 2)
+        if randomRoar == 1 then
+          figureNew.Main.SoundRoar1.PlaybackSpeed = math.random(100, 120) / 100
+          figureNew.Main.SoundRoar1:Play()
+        else
+          figureNew.Main.SoundRoar2.PlaybackSpeed = math.random(100, 120) / 100
+          figureNew.Main.SoundRoar2:Play()
+        end
+      end
+    end)
+  end
+
+  -- ==================== RUSH ====================
+  local function transformIntoRush()
+    if _G.TransformedIntoAnyMorph then return end
+    _G.TransformedIntoAnyMorph = true
+    local figureNew = trackMorphModel(game:GetObjects("rbxassetid://100327482330650")[1])
+    if not figureNew then
+      _G.TransformedIntoAnyMorph = false
+      return
+    end
+    figureNew.Parent = workspace
+    local testingPlace = (game.GameId == 6627207668)
+    if testingPlace then
+      for _, Sounds in pairs(figureNew.Main.Sounds["test game"]:GetChildren()) do
+        Sounds:Clone().Parent = figureNew.Main
+      end
+    else
+      for _, Sounds in pairs(figureNew.Main.Sounds["DOORS"]:GetChildren()) do
+        Sounds:Clone().Parent = figureNew.Main
+      end
+    end
+    figureNew.Main.Sounds:Destroy()
+    figureNew.Main.Footsteps:Play()
+    figureNew.Main.PlaySound:Play()
+    local player = game.Players.LocalPlayer
+    local renderConn
+    renderConn = game:GetService("RunService").RenderStepped:Connect(function()
+      if not figureNew.Parent or not _G.TransformedIntoAnyMorph then
+        renderConn:Disconnect()
+        return
+      end
+      local char = player.Character
+      local root = char and char:FindFirstChild("HumanoidRootPart")
+      if root then
+        figureNew:PivotTo(root.CFrame)
+      end
+      hideCharacterLocally(char)
+    end)
+    player:GetMouse().KeyDown:Connect(function(key)
+      if not figureNew.Parent then return end
+      if key == "r" then
+        if figureNew.Main.Footsteps.IsPlaying then
+          figureNew.Main.Footsteps:Stop()
+        else
+          figureNew.Main.Footsteps:Play()
+        end
+        if figureNew.Main.PlaySound.IsPlaying then
+          figureNew.Main.PlaySound:Stop()
+        else
+          figureNew.Main.PlaySound:Play()
+        end
+      end
+    end)
+  end
+
+  -- ==================== AMBUSH ====================
+  local function transformIntoAmbush()
+    if _G.TransformedIntoAnyMorph then return end
+    _G.TransformedIntoAnyMorph = true
+    local figureNew = trackMorphModel(game:GetObjects("rbxassetid://98266611233960")[1])
+    if not figureNew then
+      _G.TransformedIntoAnyMorph = false
+      return
+    end
+    figureNew.Parent = workspace
+    figureNew.Main.Footsteps:Play()
+    figureNew.Main.PlaySound:Play()
+    local player = game.Players.LocalPlayer
+    local renderConn
+    renderConn = game:GetService("RunService").RenderStepped:Connect(function()
+      if not figureNew.Parent or not _G.TransformedIntoAnyMorph then
+        renderConn:Disconnect()
+        return
+      end
+      local char = player.Character
+      local root = char and char:FindFirstChild("HumanoidRootPart")
+      if root then
+        figureNew:PivotTo(root.CFrame)
+      end
+      hideCharacterLocally(char)
+    end)
+    player:GetMouse().KeyDown:Connect(function(key)
+      if not figureNew.Parent then return end
+      if key == "r" then
+        if figureNew.Main.Footsteps.IsPlaying then
+          figureNew.Main.Footsteps:Stop()
+        else
+          figureNew.Main.Footsteps:Play()
+        end
+        if figureNew.Main.PlaySound.IsPlaying then
+          figureNew.Main.PlaySound:Stop()
+        else
+          figureNew.Main.PlaySound:Play()
+        end
+      end
+    end)
+  end
+
+  -- ==================== SEEK ====================
+  local function transformIntoSeek()
+    if _G.TransformedIntoAnyMorph then return end
+    _G.TransformedIntoAnyMorph = true
+    local figureNew = trackMorphModel(game:GetObjects("rbxassetid://86341229891935")[1])
+    if not figureNew then
+      _G.TransformedIntoAnyMorph = false
+      return
+    end
+    figureNew.Parent = workspace
+    local testingPlace = (game.GameId == 6627207668)
+    local canWalk = true
+    local introCD = false
+    local IntroAnim, PipeSlimeAnim, WalkAnim
+    if testingPlace then
+      figureNew.SeekMusic.Intro.SoundId = "rbxassetid://138877504428539"
+      IntroAnim = figureNew.SeekRig.AnimationController.Animator:LoadAnimation(figureNew.AnimationsTest.minesintro)
+      WalkAnim = figureNew.SeekRig.AnimationController.Animator:LoadAnimation(figureNew.AnimationsTest.run)
+      PipeSlimeAnim = figureNew.FullPipe._SeekCutscene.AnimationController:LoadAnimation(figureNew.FullPipe._SeekCutscene.AnimationP)
+    else
+      IntroAnim = figureNew.SeekRig.AnimationController.Animator:LoadAnimation(figureNew.Animations.minesintro)
+      WalkAnim = figureNew.SeekRig.AnimationController.Animator:LoadAnimation(figureNew.Animations.run)
+      PipeSlimeAnim = figureNew.FullPipe._SeekCutscene.AnimationController:LoadAnimation(figureNew.FullPipe._SeekCutscene.Animation)
+    end
+    WalkAnim:Play()
+    WalkAnim:AdjustSpeed(0)
+    task.spawn(function()
+      while figureNew.Parent and _G.TransformedIntoAnyMorph do
+        task.wait()
+        if not canWalk then
+          figureNew.Figure.Footsteps:Stop()
+          figureNew.Figure.FootstepsFar:Stop()
+        end
+        if figureNew.Figure.Footsteps.IsPlaying and not figureNew.Figure.FootstepsFar.IsPlaying then
+          figureNew.Figure.FootstepsFar:Play()
+        end
+        if figureNew.Figure.FootstepsFar.IsPlaying and not figureNew.Figure.Footsteps.IsPlaying then
+          figureNew.Figure.Footsteps:Play()
+        end
+      end
+    end)
+    local player = game.Players.LocalPlayer
+    local runningConn
+    runningConn = player.Character.Humanoid.Running:Connect(function(speed)
+      if not figureNew.Parent then
+        runningConn:Disconnect()
+        return
+      end
+      if speed >= 5 then
+        WalkAnim:AdjustSpeed(1)
+        if not figureNew.Figure.Footsteps.IsPlaying and canWalk then
+          figureNew.Figure.Footsteps:Play()
+          figureNew.Figure.FootstepsFar:Play()
+        end
+      else
+        WalkAnim:AdjustSpeed(0)
+        if figureNew.Figure.Footsteps.IsPlaying and canWalk then
+          figureNew.Figure.Footsteps:Stop()
+          figureNew.Figure.FootstepsFar:Stop()
+        end
+      end
+    end)
+    local function playIntro()
+      if introCD then return end
+      introCD = true
+      canWalk = false
+      player.Character.HumanoidRootPart.Anchored = true
+      figureNew.FullPipe._SeekCutscene.SlimeDrip1.Transparency = 0
+      figureNew.FullPipe._SeekCutscene.SlimeDrip2.Transparency = 0
+      figureNew.FullPipe.GrateCap.Circle.Transparency = 0
+      figureNew.FullPipe.GrateCap.Grate.Transparency = 0
+      figureNew.FullPipe.FigurePipe.PipeBase.Transparency = 0
+      figureNew.SeekRig.SeekPuddle.Transparency = 0
+      task.spawn(function()
+        task.wait(8.11)
+        for _, Beam in pairs(figureNew.SeekRig:GetChildren()) do
+          if Beam:IsA("Beam") and Beam.Name == "StringCheese" then
+            Beam.Enabled = true
+          end
+        end
+      end)
+      task.spawn(function()
+        task.wait(10.2)
+        for _, Beam in pairs(figureNew.SeekRig:GetChildren()) do
+          if Beam:IsA("Beam") and Beam.Name == "StringCheese" then
+            Beam.Enabled = false
+          end
+        end
+      end)
+      IntroAnim:Play()
+      PipeSlimeAnim:Play()
+      figureNew.SeekMusic.Intro:Play()
+      task.wait(IntroAnim.Length - 2)
+      IntroAnim:Stop()
+      figureNew.FullPipe._SeekCutscene.SlimeDrip1.Transparency = 1
+      figureNew.FullPipe._SeekCutscene.SlimeDrip2.Transparency = 1
+      figureNew.FullPipe.GrateCap.Circle.Transparency = 1
+      figureNew.FullPipe.GrateCap.Grate.Transparency = 1
+      figureNew.FullPipe.FigurePipe.PipeBase.Transparency = 1
+      figureNew.SeekRig.SeekPuddle.Transparency = 1
+      canWalk = true
+      player.Character.HumanoidRootPart.Anchored = false
+      introCD = false
+    end
+    local renderConn
+    renderConn = game:GetService("RunService").RenderStepped:Connect(function()
+      if not figureNew.Parent or not _G.TransformedIntoAnyMorph then
+        renderConn:Disconnect()
+        return
+      end
+      local char = player.Character
+      local root = char and char:FindFirstChild("HumanoidRootPart")
+      if root then
+        figureNew:PivotTo(root.CFrame)
+      end
+      hideCharacterLocally(char)
+    end)
+    player:GetMouse().KeyDown:Connect(function(key)
+      if not figureNew.Parent then return end
+      if key == "r" then
+        playIntro()
+      elseif key == "t" then
+        figureNew.Figure.Scream:Play()
+      end
+    end)
+  end
+
+  -- ==================== GRUMBLE ====================
+  local function transformIntoGrumble()
+    if _G.TransformedIntoAnyMorph == true then return end
+    _G.TransformedIntoAnyMorph = true
+    local success, result = pcall(function()
+      return game:GetObjects("rbxassetid://72896977745894")
+    end)
+    if not success or not result or not result[1] then
+      warn("Grumble: Failed to load asset 72896977745894.")
+      _G.TransformedIntoAnyMorph = false
+      return
+    end
+    local grumble = trackMorphModel(result[1])
+    if not grumble:IsA("Model") then
+      warn("Grumble asset is not a Model.")
+      grumble:Destroy()
+      _G.TransformedIntoAnyMorph = false
+      return
+    end
+    grumble.Parent = workspace
+    pcall(function()
+      grumble:ScaleTo(0.3)
+    end)
+    local player = game:GetService("Players").LocalPlayer
+    local RunService = game:GetService("RunService")
+    local character = player.Character
+    local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+    local root = character and character:FindFirstChild("HumanoidRootPart")
+    if not character or not humanoid or not root then
+      warn("Grumble: Your character is not ready.")
+      resetMorph()
+      return
+    end
+    local controller = grumble:FindFirstChildWhichIsA("AnimationController", true)
+    local grumbleHumanoid = grumble:FindFirstChildWhichIsA("Humanoid", true)
+    local animator
+    if controller then
+      animator = controller:FindFirstChildOfClass("Animator")
+      if not animator then
+        animator = Instance.new("Animator")
+        animator.Parent = controller
+      end
+    elseif grumbleHumanoid then
+      animator = grumbleHumanoid:FindFirstChildOfClass("Animator")
+      if not animator then
+        animator = Instance.new("Animator")
+        animator.Parent = grumbleHumanoid
+      end
+    end
+    if not animator then
+      warn("Grumble: No AnimationController/Humanoid was found in the asset.")
+      resetMorph()
+      return
+    end
+    local function loadGrumbleTrack(animationId, name, priority)
+      local animation = Instance.new("Animation")
+      animation.Name = name
+      animation.AnimationId = "rbxassetid://" .. animationId
+      animation.Parent = grumble
+      local ok, track = pcall(function()
+        return animator:LoadAnimation(animation)
+      end)
+      if not ok or not track then
+        animation:Destroy()
+        warn("Grumble: Could not load " .. name)
+        return nil
+      end
+      track.Looped = true
+      track.Priority = priority
+      return track
+    end
+    local crawlTrack = loadGrumbleTrack("18687934629", "GrumbleCrawl", Enum.AnimationPriority.Movement)
+    if not crawlTrack then
+      resetMorph()
+      return
+    end
+    local blinkTrack = loadGrumbleTrack("18967355407", "GrumbleBlink", Enum.AnimationPriority.Action)
+    local function setMoving(shouldMove, speed)
+      if not grumble.Parent then return end
+      if not crawlTrack.IsPlaying then
+        crawlTrack:Play(0.25)
+      end
+      if shouldMove then
+        crawlTrack:AdjustSpeed(math.clamp((speed or 8) / 8, 0.7, 1.9))
+      else
+        crawlTrack:AdjustSpeed(0.12)
+      end
+    end
+    crawlTrack:Play(0)
+    crawlTrack:AdjustSpeed(0.12)
+    if blinkTrack then
+      blinkTrack:Play(0.3)
+    end
+    local renderConnection
+    renderConnection = RunService.RenderStepped:Connect(function()
+      if not grumble.Parent or not _G.TransformedIntoAnyMorph then
+        renderConnection:Disconnect()
+        return
+      end
+      character = player.Character
+      root = character and character:FindFirstChild("HumanoidRootPart")
+      if root then
+        grumble:PivotTo(root.CFrame)
+      end
+      hideCharacterLocally(player.Character)
+    end)
+    local runningConnection
+    runningConnection = humanoid.Running:Connect(function(speed)
+      if not grumble.Parent or not _G.TransformedIntoAnyMorph then
+        runningConnection:Disconnect()
+        return
+      end
+      setMoving(speed >= 1, speed)
+    end)
+  end
+
+  -- ==================== GROUNDSKEEPER ====================
+  local function transformIntoGroundskeeper()
+    if _G.TransformedIntoAnyMorph == true then return end
+    _G.TransformedIntoAnyMorph = true
+    local success, result = pcall(function()
+      return game:GetObjects("rbxassetid://105352265307130")
+    end)
+    if not success or not result or not result[1] then
+      warn("Groundskeeper: Failed to load asset 105352265307130")
+      _G.TransformedIntoAnyMorph = false
+      return
+    end
+    local groundskeeper = trackMorphModel(result[1])
+    if not groundskeeper:IsA("Model") then
+      warn("Groundskeeper asset is not a Model")
+      groundskeeper:Destroy()
+      _G.TransformedIntoAnyMorph = false
+      return
+    end
+    groundskeeper.Parent = workspace
+    pcall(function()
+      groundskeeper:ScaleTo(0.85)
+    end)
+    local player = game:GetService("Players").LocalPlayer
+    local RunService = game:GetService("RunService")
+    local character = player.Character
+    local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+    local root = character and character:FindFirstChild("HumanoidRootPart")
+    if not character or not humanoid or not root then
+      warn("Groundskeeper: Character not ready")
+      resetMorph()
+      return
+    end
+    local controller = groundskeeper:FindFirstChildWhichIsA("AnimationController", true)
+    local gkHumanoid = groundskeeper:FindFirstChildWhichIsA("Humanoid", true)
+    local animator
+    if controller then
+      animator = controller:FindFirstChildOfClass("Animator") or Instance.new("Animator", controller)
+    elseif gkHumanoid then
+      animator = gkHumanoid:FindFirstChildOfClass("Animator") or Instance.new("Animator", gkHumanoid)
+    end
+    if not animator then
+      warn("Groundskeeper: No Animator found")
+      resetMorph()
+      return
+    end
+    local function loadTrack(anim, priority)
+      local ok, track = pcall(function()
+        return animator:LoadAnimation(anim)
+      end)
+      if ok and track then
+        track.Looped = true
+        track.Priority = priority or Enum.AnimationPriority.Movement
+        return track
+      end
+      return nil
+    end
+    local idleTrack, walkTrack
+    for _, item in ipairs(groundskeeper:GetDescendants()) do
+      if item:IsA("Animation") then
+        local name = string.lower(item.Name)
+        if (name:find("idle") or name:find("stand")) and not idleTrack then
+          idleTrack = loadTrack(item, Enum.AnimationPriority.Idle)
+        elseif (name:find("walk") or name:find("run") or name:find("move")) and not walkTrack then
+          walkTrack = loadTrack(item, Enum.AnimationPriority.Movement)
+        end
+      end
+    end
+    playAllSoundsInModel(groundskeeper)
+    local function setMoving(shouldMove, speed)
+      if not groundskeeper.Parent then return end
+      if shouldMove then
+        if idleTrack and idleTrack.IsPlaying then idleTrack:Stop(0.25) end
+        if walkTrack then
+          if not walkTrack.IsPlaying then walkTrack:Play(0.25) end
+          walkTrack:AdjustSpeed(math.clamp((speed or 8) / 10, 0.7, 1.6))
+        end
+      else
+        if walkTrack and walkTrack.IsPlaying then walkTrack:Stop(0.25) end
+        if idleTrack and not idleTrack.IsPlaying then
+          idleTrack:Play(0.25)
+        end
+      end
+    end
+    if idleTrack then
+      idleTrack:Play(0.3)
+    elseif walkTrack then
+      walkTrack:Play(0)
+      walkTrack:AdjustSpeed(0.1)
+    end
+    local renderConnection
+    renderConnection = RunService.RenderStepped:Connect(function()
+      if not groundskeeper.Parent or not _G.TransformedIntoAnyMorph then
+        renderConnection:Disconnect()
+        return
+      end
+      character = player.Character
+      root = character and character:FindFirstChild("HumanoidRootPart")
+      if root then
+        groundskeeper:PivotTo(root.CFrame * CFrame.new(0, 2.4, 0))
+      end
+      hideCharacterLocally(player.Character)
+    end)
+    local runningConnection
+    runningConnection = humanoid.Running:Connect(function(speed)
+      if not groundskeeper.Parent or not _G.TransformedIntoAnyMorph then
+        runningConnection:Disconnect()
+        return
+      end
+      setMoving(speed >= 1, speed)
+    end)
+  end
+
+  -- ==================== SCREECH ====================
+  local function transformIntoScreech()
+    if _G.TransformedIntoAnyMorph then return end
+    _G.TransformedIntoAnyMorph = true
+    local success, result = pcall(function()
+      return game:GetService("ReplicatedStorage").Entities.Screech:Clone()
+    end)
+    if not success or not result then
+      warn("Screech: Failed to load from ReplicatedStorage")
+      _G.TransformedIntoAnyMorph = false
+      return
+    end
+    local morph = trackMorphModel(result)
+    morph.Name = "morph"
+    morph.Parent = workspace
+    local player = game.Players.LocalPlayer
+    local IdleAnim = morph.AnimationController:LoadAnimation(morph.Animations.Idle)
+    IdleAnim:Play()
+    playAllSoundsInModel(morph)
+    local renderConn
+    renderConn = game:GetService("RunService").RenderStepped:Connect(function()
+      if not morph.Parent or not _G.TransformedIntoAnyMorph then
+        renderConn:Disconnect()
+        return
+      end
+      local char = player.Character
+      local root = char and char:FindFirstChild("HumanoidRootPart")
+      if root then
+        morph:PivotTo(root.CFrame * CFrame.new(0, 1, 0))
+      end
+      hideCharacterLocally(char)
+    end)
+  end
+
+  -- Shared builder for the simple anchored-model morphs (Eyes, Halt, A-60, A-120)
+  local function simpleMorph(tag, assetId, anchorName, offsetY, extra)
+    if _G.TransformedIntoAnyMorph then return end
+    _G.TransformedIntoAnyMorph = true
+    local success, result = pcall(function()
+      return game:GetObjects("rbxassetid://" .. assetId)[1]
+    end)
+    if not success or not result then
+      warn(tag .. ": Failed to load asset " .. assetId)
+      _G.TransformedIntoAnyMorph = false
+      return
+    end
+    local morph = trackMorphModel(result)
+    morph.Parent = workspace
+    local mainPart = (anchorName and morph:FindFirstChild(anchorName))
+      or morph.PrimaryPart
+      or morph:FindFirstChildWhichIsA("BasePart", true)
+    if mainPart and mainPart:IsA("BasePart") then
+      mainPart.Anchored = true
+      mainPart.CanCollide = false
+    end
+    if extra then extra(morph) end
+    playAllSoundsInModel(morph)
+    local player = game.Players.LocalPlayer
+    local renderConn
+    renderConn = game:GetService("RunService").RenderStepped:Connect(function()
+      if not morph.Parent or not _G.TransformedIntoAnyMorph then
+        renderConn:Disconnect()
+        return
+      end
+      local char = player.Character
+      local root = char and char:FindFirstChild("HumanoidRootPart")
+      if root then
+        morph:PivotTo(root.CFrame * CFrame.new(0, offsetY, 0))
+      end
+      hideCharacterLocally(char)
+    end)
+  end
+
+  local function transformIntoEyes()
+    simpleMorph("Eyes", "12457741170", "Core", 1)
+  end
+
+  local function transformIntoHalt()
+    simpleMorph("Halt", "12457734969", "Shade", 0.3, function(morph)
+      if morph:FindFirstChild("Shade") then
+        game:GetService("TweenService"):Create(morph.Shade, TweenInfo.new(4.6, Enum.EasingStyle.Linear, Enum.EasingDirection.Out, -1, false, 0), {
+          Orientation = Vector3.new(0, 360, 0)
+        }):Play()
+      end
+    end)
+  end
+
+  local function transformIntoA60()
+    simpleMorph("A-60 (BUGGED/LOUD SOUND)", "12457764963", "Main", 1)
+  end
+
+  local function transformIntoA120()
+    simpleMorph("A-120 (BUGGED/LOUD SOUND)", "12457887111", "Main", 1)
+  end
+
+  -- ==================== DREAD ====================
+  local function transformIntoDread()
+    if _G.TransformedIntoAnyMorph then return end
+    _G.TransformedIntoAnyMorph = true
+    local success, result = pcall(function()
+      return game:GetObjects("rbxassetid://17271461277")[1]
+    end)
+    if not success or not result then
+      warn("Dread: Failed to load new asset 17271461277")
+      _G.TransformedIntoAnyMorph = false
+      return
+    end
+    local morph = trackMorphModel(result)
+    morph.Parent = workspace
+    local mainPart = morph:FindFirstChild("RushNew") or morph:FindFirstChild("Main") or morph.PrimaryPart
+    if mainPart and mainPart:IsA("BasePart") then
+      mainPart.Anchored = true
+      mainPart.CanCollide = false
+    end
+    playAllSoundsInModel(morph)
+    local player = game.Players.LocalPlayer
+    local renderConn
+    renderConn = game:GetService("RunService").RenderStepped:Connect(function()
+      if not morph.Parent or not _G.TransformedIntoAnyMorph then
+        renderConn:Disconnect()
+        return
+      end
+      local char = player.Character
+      local root = char and char:FindFirstChild("HumanoidRootPart")
+      if root then
+        morph:PivotTo(root.CFrame * CFrame.new(0, 1, 0))
+      end
+      hideCharacterLocally(char)
+    end)
+  end
+
+  -- ==================== HONCHO ====================
+  local function fetchHonchoRig()
+    if not isfolder("assets") then makefolder("assets") end
+    if not isfolder("assets/upio") then makefolder("assets/upio") end
+    local path = "assets/upio/HonchoRig.rbxm"
+    if not isfile(path) or readfile(path) == "" then
+      writefile(path, game:HttpGet("https://kardin-hong-upio-assets.pages.dev/HonchoRig.rbxm"))
+    end
+    return game:GetObjects(getcustomasset(path))[1]
+  end
+
+  local HonchoRigCache
+
+  local function transformIntoHoncho()
+    if _G.TransformedIntoAnyMorph then return end
+    _G.TransformedIntoAnyMorph = true
+
+    local player = game.Players.LocalPlayer
+    local character = player.Character
+    local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+    local root = character and character:FindFirstChild("HumanoidRootPart")
+    if not humanoid or not root then
+      warn("Honcho: character not ready")
+      _G.TransformedIntoAnyMorph = false
+      return
+    end
+
+    if not HonchoRigCache then
+      local ok, rig = pcall(fetchHonchoRig)
+      if not ok or not rig then
+        warn("Honcho: failed to load HonchoRig.rbxm", rig)
+        _G.TransformedIntoAnyMorph = false
+        return
+      end
+      HonchoRigCache = rig
+    end
+
+    local honcho = trackMorphModel(HonchoRigCache:Clone())
+    honcho.Name = "HonchoRigLive"
+    for _, part in ipairs(honcho:GetDescendants()) do
+      if part:IsA("BasePart") then
+        part.CanCollide = false
+        part.Massless = true
+        part.Anchored = (part.Name == "RootPart")
+      end
+    end
+    honcho.Parent = workspace
+    honcho:PivotTo(root.CFrame)
+
+    local rigBox, rigSize = honcho:GetBoundingBox()
+    local rigRoot = honcho.PrimaryPart or honcho:FindFirstChild("RootPart")
+    local charBox, charSize = character:GetBoundingBox()
+    local lift = CFrame.identity
+    if rigRoot then
+      local honchoHip = rigRoot.Position.Y - (rigBox.Position.Y - rigSize.Y / 2)
+      local playerHip = root.Position.Y - (charBox.Position.Y - charSize.Y / 2)
+      lift = CFrame.new(0, honchoHip - playerHip, 0)
+    end
+
+    local controller = honcho:FindFirstChildOfClass("AnimationController")
+    local animator = controller and (controller:FindFirstChildOfClass("Animator") or Instance.new("Animator", controller))
+    local animFolder = honcho:FindFirstChild("Animations")
+    local idleTrack, runTrack, hitTrack
+    if animator and animFolder then
+      local idleAnim = animFolder:FindFirstChild("Idle")
+      local runAnim = animFolder:FindFirstChild("Run")
+      local hitAnim = animFolder:FindFirstChild("Entity_Hit")
+      if idleAnim then
+        idleTrack = animator:LoadAnimation(idleAnim)
+        idleTrack.Looped = true
+        idleTrack:Play()
+      end
+      if runAnim then
+        runTrack = animator:LoadAnimation(runAnim)
+        runTrack.Looped = true
+      end
+      if hitAnim then
+        hitTrack = animator:LoadAnimation(hitAnim)
+        hitTrack.Looped = false
+        hitTrack.Priority = Enum.AnimationPriority.Action
+      end
+    end
+
+    local renderConn
+    renderConn = game:GetService("RunService").RenderStepped:Connect(function()
+      if not honcho.Parent or not _G.TransformedIntoAnyMorph then
+        renderConn:Disconnect()
+        return
+      end
+      local char = player.Character
+      local r = char and char:FindFirstChild("HumanoidRootPart")
+      local hum = char and char:FindFirstChildOfClass("Humanoid")
+      if r then
+        honcho:PivotTo(r.CFrame * lift)
+      end
+      hideCharacterLocally(char)
+
+      if hum and not (hitTrack and hitTrack.IsPlaying) then
+        if hum.MoveDirection.Magnitude > 0.1 then
+          if runTrack and not runTrack.IsPlaying then runTrack:Play(0.15) end
+          if idleTrack and idleTrack.IsPlaying then idleTrack:Stop(0.15) end
+        else
+          if idleTrack and not idleTrack.IsPlaying then idleTrack:Play(0.15) end
+          if runTrack and runTrack.IsPlaying then runTrack:Stop(0.15) end
+        end
+      end
+    end)
+
+    local inputConn
+    inputConn = game:GetService("UserInputService").InputBegan:Connect(function(input, processed)
+      if not honcho.Parent or not _G.TransformedIntoAnyMorph then
+        inputConn:Disconnect()
+        return
+      end
+      if processed or not hitTrack then return end
+      if input.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
+      if player.Character and player.Character:FindFirstChildOfClass("Tool") then return end
+      if idleTrack and idleTrack.IsPlaying then idleTrack:Stop(0.1) end
+      if runTrack and runTrack.IsPlaying then runTrack:Stop(0.1) end
+      hitTrack:Stop(0)
+      hitTrack:Play(0.05)
+    end)
+  end
+
+  MorphActions.Figure = transformIntoFigure
+  MorphActions.Gloombat = transformIntoGloombat
+  MorphActions.Rush = transformIntoRush
+  MorphActions.Ambush = transformIntoAmbush
+  MorphActions.Seek = transformIntoSeek
+  MorphActions.Grumble = transformIntoGrumble
+  MorphActions.Groundskeeper = transformIntoGroundskeeper
+  MorphActions.Screech = transformIntoScreech
+  MorphActions.Eyes = transformIntoEyes
+  MorphActions.Halt = transformIntoHalt
+  MorphActions["A-60"] = transformIntoA60
+  MorphActions["A-120"] = transformIntoA120
+  MorphActions.Dread = transformIntoDread
+  MorphActions.Honcho = transformIntoHoncho
+  MorphActions.Reset = resetMorph
+end
+
+local vMorphs = CreateContainer("Morphs")
+local vMorphIcons = require(InputTypes.IconContainer).new("Morphs", vMorphs, false)
+vMorphIcons:SetAspectRatio(1.66)
+
+for _, name in ipairs({
+  "Figure", "Gloombat", "Rush", "Ambush", "Seek", "Grumble", "Groundskeeper",
+  "Screech", "Eyes", "Halt", "A-60 (BUGGED/LOUD SOUND) ", "A-120 (BUGGED/LOUD SOUND) ", "Dread", "Honcho",
+}) do
+  vMorphIcons:AddIcon(name, name, "Entity", name, nil, function()
+    local ok, err = pcall(MorphActions[name])
+    if not ok then
+      warn("[Morphs] " .. name .. " failed:", err)
+      pcall(MorphActions.Reset)
+    end
+  end, true)
+end
+
+local resetIcon = vMorphIcons:AddIcon("ResetMorph", "RESET MORPH", "Entity", "RESET MORPH", nil, function()
+  pcall(MorphActions.Reset)
+end, true)
+resetIcon.LayoutOrder = 9999
+resetIcon.Container.BackgroundColor3 = Color3.fromRGB(175, 30, 30)
+
+local giggleIcon = vMorphIcons:AddIcon("GiggleStompToggle", "GIGGLE STOMP", "Entity", "GIGGLE STOMP", nil, function()
+  _G.StompGigglesEnabled = not _G.StompGigglesEnabled
+  warn("[Morphs] Giggle stomping " .. (_G.StompGigglesEnabled and "ON" or "OFF"))
+end, true)
+giggleIcon.LayoutOrder = 9998
+
+--// ===== PLAYERS ===== \\--
+local v30 = CreateContainer("Players")
+local v31 = require(InputTypes.IconContainer).new("Players", v30, false)
+v31:AddIcon("SelectAll", nil, "rbxassetid://18671119524", nil, "SELECT ALL", function(p1, p2)
+    v31:ToggleSelectAll()
+end).Container.IsSelected:Destroy()
+v31:AddIcon("SelectOthers", nil, "rbxassetid://18671129985", nil, "SELECT OTHERS", function(p1, p2)
+    v31:ToggleSelectAll({ Players.LocalPlayer.Name })
+end).Container.IsSelected:Destroy()
+local localPlayerIcon = nil
+
+local function AddPlayer(p1)
+    local playerIcon = v31:AddIcon(
+        p1.Name,
+        p1.Name,
+        "https://www.roblox.com/bust-thumbnail/image?userId=" .. p1.UserId .. "&width=100&height=100&format=png",
+        p1.DisplayName,
+        (("@%*"):format(p1.Name))
+    )
+
+    if p1 == Players.LocalPlayer then
+        localPlayerIcon = playerIcon
+    end
+end
+
+for _, player in pairs(Players:GetPlayers()) do
+    AddPlayer(player)
+end
+
+game.Players.PlayerAdded:Connect(AddPlayer)
+
+game.Players.PlayerRemoving:Connect(function(p1)
+    if p1 == Players.LocalPlayer then
+        localPlayerIcon = nil
+    end
+
+    v31:RemoveIcon(p1.Name)
+end)
+
+local function IsLocalPlayerSelected()
+    if not localPlayerIcon or not localPlayerIcon.Container then
+        return false
+    end
+
+    local marker = localPlayerIcon.Container:FindFirstChild("IsSelected")
+
+    return marker ~= nil and marker.Visible == true
+end
+
+local v34 = require(InputTypes.ButtonStack).new("Player Actions", v30)
+v34:AddButton("TeleportToPlayer", "GOTO"):AddParameter(v31)
+v34:AddButton("TeleportPlayer", "BRING"):AddParameter(v31)
+v34:AddButton("KillPlayer", "KILL", t2.Danger):AddParameter(v31)
+v34:AddButton("ExplodePlayer", "EXPLODE", t2.Danger):AddParameter(v31)
+v34:AddButton("FlingPlayer", "FLING", t2.Default):AddParameter(v31)
+v34:AddButton("HealPlayer", "HEAL", t2.Help):AddParameter(v31)
+v34:AddButton("RevivePlayer", "REVIVE", t2.Help):AddParameter(v31)
+v34:AddButton("DoorsManPlayer", "DOORSMAN-IFY", Color3.fromRGB(90, 26, 22)):AddParameter(v31)
+v34:AddButton("ScreechPlayer", "SCREECH", t2.Danger):AddParameter(v31)
+v34:AddButton("VoidPlayer", "VOID", t2.Danger):AddParameter(v31)
+v34:AddButton("GlitchPlayer", "GLITCH", t2.Danger):AddParameter(v31)
+v34:AddButton("RansomPlayer", "RANSOM", t2.Danger):AddParameter(v31)
+v34:AddButton("A90Player", "A-90", t2.Danger):AddParameter(v31)
+v34:AddButton("AdminPlayer", "ADMIN", t2.Admin):AddParameter(v31)
+v34:AddButton("UnadminPlayer", "UNADMIN", t2.Admin):AddParameter(v31)
+v34:AddButton("KickPlayer", "KICK", t2.Danger):AddParameter(v31):SetConfirmation(true)
+v34:AddButton("thirdperson", "Third Person", t2.White):AddParameter(v31)
+--// THIRD PERSON BUTTON \\--
+
+local RunService = game:GetService("RunService")
+local BIND = "DoorsThirdPersonToggle"
+local DISTANCE = 10
+
+local function toggleThirdPerson()
+    if _G.__tpOn then
+        _G.__tpOn = false
+
+        pcall(function()
+            RunService:UnbindFromRenderStep(BIND)
+        end)
+
+        if _G.__tpCharConn then
+            _G.__tpCharConn:Disconnect()
+            _G.__tpCharConn = nil
+        end
+
+        LocalPlayer.CameraMinZoomDistance = 0.5
+        LocalPlayer.CameraMaxZoomDistance = 0.5
+        LocalPlayer.CameraMode = Enum.CameraMode.LockFirstPerson
+
+        print("[Camera] first person")
+        return
+    end
+
+    _G.__tpOn = true
+
+    LocalPlayer.CameraMode = Enum.CameraMode.Classic
+    LocalPlayer.CameraMinZoomDistance = 0.5
+    LocalPlayer.CameraMaxZoomDistance = 128
+
+    _G.__tpCharConn = LocalPlayer.CharacterAdded:Connect(function()
+        if not _G.__tpOn then return end
+
+        task.wait(0.3)
+
+        LocalPlayer.CameraMode = Enum.CameraMode.Classic
+        LocalPlayer.CameraMinZoomDistance = 0.5
+        LocalPlayer.CameraMaxZoomDistance = 128
+    end)
+
+    local acc = 0
+
+    RunService:BindToRenderStep(
+        BIND,
+        Enum.RenderPriority.Camera.Value + 1,
+        function(dt)
+            if not _G.__tpOn then return end
+
+            local cam = workspace.CurrentCamera
+            if not cam then return end
+
+            acc += dt
+
+            if acc >= 0.5 then
+                acc = 0
+                LocalPlayer.CameraMode = Enum.CameraMode.Classic
+                LocalPlayer.CameraMaxZoomDistance = 128
+            end
+
+            cam.CFrame = cam.CFrame * CFrame.new(0, 0, DISTANCE)
+        end
+    )
+
+    print("[Camera] third person")
+end
+
+-- Find the Third Person button
+task.defer(function()
+    for _, obj in ipairs(v30:GetDescendants()) do
+        if (obj:IsA("TextLabel") or obj:IsA("TextButton"))
+            and obj.Text == "Third Person" then
+
+            local button
+
+            if obj:IsA("GuiButton") then
+                button = obj
+            else
+                button = obj:FindFirstAncestorWhichIsA("GuiButton")
+            end
+
+            if button and not button:GetAttribute("ThirdPersonConnected") then
+                button:SetAttribute("ThirdPersonConnected", true)
+
+                button.Activated:Connect(function()
+                    if not IsLocalPlayerSelected() then
+                        warn("[Third Person] Select yourself first!")
+                        return
+                    end
+
+                    toggleThirdPerson()
+                end)
+
+                print("[Third Person] Button connected")
+                return
+            end
+        end
+    end
+
+    warn("[Third Person] Could not find button")
+end)
+
+local v35 = CreateContainer("Stats", v30)
+local v36 = require(InputTypes.Slider).new("Max Health", v35, 100, NumberRange.new(-10000, 10000), 0)
+local v37 = require(InputTypes.Slider).new("Health", v35, 100, NumberRange.new(-10000, 10000), 0)
+local v38 = require(InputTypes.Slider).new("Star Shield", v35, 0, NumberRange.new(-10000, 10000), 0)
+local SugarRush = require(InputTypes.Slider).new("Sugar Rush", v35, 0, NumberRange.new(-10000, 10000), 0)
+local v39 = require(InputTypes.Slider).new("Speed Boost", v35, 0, NumberRange.new(-10000, 10000), 0)
+local v40 = require(InputTypes.Switch).new("God Mode", v35, false)
+local v41 = require(InputTypes.Switch).new("Allow Jumping", v35, false)
+local EnableSprint = require(InputTypes.Switch).new("Allow Sprinting", v35, false)
+local v42 = require(InputTypes.Switch).new("Allow Sliding", v35, false)
+require(InputTypes.Button).new("Apply Changes", v35)
+    :AddParameter(v31)
+    :AddParameter(v36)
+    :AddParameter(v37)
+    :AddParameter(v38)
+    :AddParameter(v39)
+    :AddParameter(v40)
+    :AddParameter(v41)
+    :AddParameter(v42)
+    :AddParameter(SugarRush)
+    :AddParameter(EnableSprint)
+    :SetActive(true)
+local v43 = CreateContainer("Gold", v30)
+local v44 = require(InputTypes.Slider).new("Gold Amount", v43, 50, NumberRange.new(-10000, 100000), 0)
+local v45 = require(InputTypes.Switch).new("Add To Current Gold", v43, false)
+require(InputTypes.Button).new("Give Gold", v43):AddParameter(v31):AddParameter(v44):AddParameter(v45):SetActive(true)
+local v46 = CreateContainer("Items", v30)
+local v47 = require(InputTypes.IconContainer).new("Items", v46, false)
+local t4 = {}
+local customImages = {
+    DinkyLamp = "rbxassetid://94390736027821", LargeScrew = "rbxassetid://108745295669342", GweenSodaPack = "rbxassetid://75397946540493", JerryCan = "rbxassetid://112188613409282",
+    BrokenMonitor = "rbxassetid://122841415160190", AbrahamHat = "rbxassetid://118795127842238", BottleCrate = "rbxassetid://128967620334283", Stem = "rbxassetid://122476399799348",
+    CeramicStem = "rbxassetid://133046096038488", SalvageScrap = "rbxassetid://88875847166298", Haybale = "rbxassetid://106343862740167", CandyBasket = "rbxassetid://97670649165065",
+    CandyBucket = "rbxassetid://98466816212693", WizardHat = "rbxassetid://129732355090712", LargeCandyBag = "rbxassetid://132110477296820", GiantGummyworm = "rbxassetid://82541369006757",
+    SmallCauldron = "rbxassetid://111779491865837", BrokenHeadstone = "rbxassetid://125302386058021", ChocolateCrate = "rbxassetid://119090269970897", Flares = "rbxassetid://131318338880701",
+    Briefcase = "rbxassetid://138634158890068", PaperPlane = "rbxassetid://80334088426896", Leftovers = "rbxassetid://87174525139694", HoneyPot = "rbxassetid://84825411467075",
+    Microwave = "rbxassetid://128168969192109", Mug = "rbxassetid://97657032741719", Scanner = "rbxassetid://11374263930", ObjectScanner = "rbxassetid://86882268877357",
+    Buddy = "rbxassetid://96164691124017",
+    PuzzlePainting = "rbxassetid://77370977811157",
+    CringlePresent = "rbxassetid://14098615241",
+    RushSpawnBottle = "rbxassetid://112231951524554",
+    droninit = "rbxassetid://127017316583079",
+    Holy_Hand_Grenade = "rbxassetid://139711497567369",
+    shieldmini = "rbxassetid://12955117807",
+    bigshield = "rbxassetid://12955117652",
+    AmongUs_Potion = "rbxassetid://91328333661226",
+    EvilDollar = "rbxassetid://127043512329917",
+    M249 = "rbxassetid://10889297548",
+    Socker = "rbxassetid://130024039253457",
+    Envelope = "rbxassetid://74882249771566",
+    thatguysmasterpiece = "rbxassetid://77501138542026",
+    Lotus = "rbxassetid://121905075599624", LotusPetal = "rbxassetid://82584389669499", Candy = "rbxassetid://91226846785149",
+    CandyBag = "rbxassetid://88108365460057", ArchivesTicket = "rbxassetid://116552699534329", SallyToy = "rbxassetid://126510979761292", SecretCD = "rbxassetid://102651623741266",
+    ArchivesStorageBox = "rbxassetid://108233481314762", FihFlakes = "rbxassetid://121885940364750", WaterCup = "rbxassetid://71060879079691", CartToGo = "rbxassetid://81829195761498"
+}
+local missingData = {
+    SALVAGE = { {"DinkyLamp","Lamp"},{"LargeScrew","Large Screw"},{"GweenSodaPack","Pack of Gween Soda"},{"JerryCan","Jerry Can"},{"BrokenMonitor","Broken Monitor"},{"AbrahamHat","Damaged Hat"},{"BottleCrate","Crate of Bottles"},{"SalvageScrap","Scrap"},{"Haybale","Haybale"},{"CandyBasket","Candy Basket"},{"CandyBucket","Candy Bucket"},{"WizardHat","Witch Hat"},{"LargeCandyBag","Large Candy Bag"},{"GiantGummyworm","Giant Gummy Worm"},{"SmallCauldron","Small Cauldron"},{"BrokenHeadstone","Broken Tombstone"},{"ChocolateCrate","Chocolate Crate"} },
+    LIGHT = { {"Lighter","Lighter"},{"Straplight","Straplight"},{"Shakelight","Shakelight"},{"Candle","Candle"},{"Glowsticks","Glowsticks"},{"Bulklight","Bulklight"},{"Flashlight","Flashlight"},{"Lantern","Lantern"},{"Flares","Flares"} },
+    HEALING = { {"BandagePack","Bandage Pack"},{"Vitamins","Vitamins"},{"AloeVera","Aloe"} },
+    UTILITY = { {"BatteryPack","Battery Pack"},{"Lockpick","Lockpick"},{"SkeletonKey","Skeleton Key"},{"LaserPointer","Laser Pointer"},{"Shears","Shears"},{"BandagePack","Bandage Pack"},{"AlarmClock","Alarm Clock"},{"TipJar","Tip Jar"},{"Multitool","Multitool"},{"Compass","Compass"},{"Crucifix","Crucifix"},{"PocketMirror","Pocket Mirror"},{"CoinRoll","Coin Roll"},{"ObjectScanner","Scanner"},{"Briefcase","Briefcase"},{"PaperPlane","Paper Airplane"},{"Leftovers","Lunchbox"},{"HoneyPot","Honey Pot"},{"Microwave","Microwave"} },
+    EDIBLE = { {"StarBottle","Starlight Bottle"},{"StarJug","Starlight Jug"},{"StarVial","Starlight Vial"},{"Smoothie","Smoothie"},{"Donut","Donut"},{"GweenSoda","Gween Soda"},{"Bread","Bread"},{"Cheese","Cheese"},{"RiftSmoothie","Moonlight Float"},{"Nanner","Nanner"},{"Vitamins","Vitamins"},{"Pizza","Pizza"},{"PeachCobbler","Peach Cobbler"},{"WaterCup","Water Cup"} },
+    MAGICAL = { {"StarBottle","Starlight Bottle"},{"StarJug","Starlight Jug"},{"StarVial","Starlight Vial"},{"RiftCandle","Moonlight Candle"},{"RiftSmoothie","Moonlight Float"},{"RiftJar","Rift Jar"},{"Crucifix","Crucifix"},{"Lotus","Lotus"},{"LotusPetal","Lotus Petal"} },
+    ENTITIES = { {"StopSign","Ransom's Stop Sign"},{"PocketMirror","Pocket Mirror"},{"Stem","Stem"},{"CeramicStem","Ceramic Stem"},{"SecretCD","Disc"} },
+    BATTLE = { {"GoldGun","Gold Blaster"},{"BigBomb","Big Bomb"},{"BigPropTool","Throwable Prop"},{"Bomb","Bomb"},{"Knockbomb","Knockbomb"},{"Nanner","Nanner"},{"NannerPeel","Nanner Peel"},{"SnakeBox","Hiding Box"},{"StopSign","Ransom's Stop Sign"},{"BoxingGloves","Boxing Gloves"} },
+    EVENTS = { {"LibraryHintPaperHard","SUPER HARD MODE Paper"},{"KeyRetro","Key"},{"HolyGrenade","Holy Hand Grenade"},{"Candy","Candy"},{"CandyBag","Candy Bag"},{"Haybale","Haybale"},{"CandyBasket","Candy Basket"},{"CandyBucket","Candy Bucket"},{"WizardHat","Witch Hat"},{"LargeCandyBag","Large Candy Bag"},{"GiantGummyworm","Giant Gummy Worm"},{"SmallCauldron","Small Cauldron"},{"BrokenHeadstone","Broken Tombstone"},{"ChocolateCrate","Chocolate Crate"} },
+    KEYS = { {"KeyElectrical","Electrical Room Key"},{"Lockpick","Lockpick"},{"SkeletonKey","Skeleton Key"},{"Key","Key"},{"KeyBackdoor","Key"},{"KeyIron","Iron Key"},{"KeyGarage","Garage Key"},{"KeyJewelry","Jewelry Key"} },
+    ESSENTIAL = { {"HintBook","Book"},{"LibraryHintPaper","Paper"},{"GeneratorFuse","Fuse"},{"LibraryHintPaperHard","SUPER HARD MODE Paper"},{"ArchivesTicket","Ticket"},{"FihFlakes","Fih Flakes"},{"SallyToy","Sally's Toy"},{"ArchivesStorageBox","Storage Box"},{"SecretCD","Disc"} },
+    CURRENCIES = { {"TipJar","Tip Jar"},{"LotusPetal","Lotus Petal"},{"CoinRoll","Coin Roll"},{"HoneyPot","Honey Pot"},{"SalvageScrap","Scrap"} },
+    ADMIN = { {"KnockbackStick","Knockback Stick"},{"Scanner","NVCS-3000"},{"CartToGo","Cart To Go"} },
+    UNSORTED = {
+        {"Buddy", "Buddy"},
+        {"PuzzlePainting", "Puzzle Painting"},
+        {"CringlePresent", "Present"},
+        {"Mug", "Honcho's Mug"},
+        {"RushSpawnBottle", "Rush Jar"},
+        {"droninit", "Drone"},
+        {"Holy_Hand_Grenade", "Holy Egg Grenade"},
+        {"Socker", "Socker"},
+        {"thatguysmasterpiece", "that guy's masterpiece"},
+        {"shieldmini", "Mini Shield"},
+        {"bigshield", "Big Shield"},
+        {"AmongUs_Potion", "Among Us Potion"},
+        {"Envelope", "Envelope"},
+        {"EvilDollar", "Evil Dollar"},
+        {"M249", "M249"}
+    }
+}
+local definitions = script.Parent:FindFirstChild("Items")
+if definitions then
+    for catName, itemsList in pairs(missingData) do
+        for _, item in ipairs(itemsList) do
+            local id = item[1]
+            local display = item[2]
+            local def = definitions:FindFirstChild(id)
+            if not def then
+                def = Instance.new("Folder")
+                def.Name = id
+                def.Parent = definitions
+            end
+            def:SetAttribute("DisplayName", display)
+            if customImages[id] then
+                def:SetAttribute("Image", customImages[id])
+            end
+        end
+    end
+end
+local magicalGradientColor = script:FindFirstChild("MagicalGradient") and script.MagicalGradient.Color or nil
+local battleGradientColor = script:FindFirstChild("BattleGradient") and script.BattleGradient.Color or nil
+for v48, v49 in ipairs({
+    { Name = "SALVAGE", Color = Color3.fromRGB(0, 0, 0), Items = { "DinkyLamp", "LargeScrew", "GweenSodaPack", "JerryCan", "BrokenMonitor", "AbrahamHat", "BottleCrate", "SalvageScrap", "Haybale", "CandyBasket", "CandyBucket", "WizardHat", "LargeCandyBag", "GiantGummyworm", "SmallCauldron", "BrokenHeadstone", "ChocolateCrate" } },
+    { Name = "LIGHT", Color = Color3.fromRGB(255, 226, 137), Items = { "Lighter", "Straplight", "Shakelight", "Candle", "Glowsticks", "Bulklight", "Flashlight", "Lantern", "Flares" } },
+    { Name = "HEALING", Color = Color3.fromRGB(180, 255, 199), Items = { "BandagePack", "Vitamins", "AloeVera" } },
+    { Name = "UTILITY", Color = Color3.fromRGB(175, 224, 255), Items = { "BatteryPack", "Lockpick", "SkeletonKey", "LaserPointer", "Shears", "BandagePack", "AlarmClock", "TipJar", "Multitool", "Compass", "Crucifix", "PocketMirror", "CoinRoll", "ObjectScanner", "Briefcase", "PaperPlane", "Leftovers", "HoneyPot", "Microwave" } },
+    { Name = "EDIBLE", Color = Color3.fromRGB(255, 184, 120), Items = { "StarBottle", "StarJug", "StarVial", "Smoothie", "Donut", "GweenSoda", "Bread", "Cheese", "RiftSmoothie", "Nanner", "Vitamins", "Pizza", "PeachCobbler", "WaterCup" } },
+    { Name = "MAGICAL", Color = Color3.fromRGB(58, 117, 255), Items = { "StarBottle", "StarJug", "StarVial", "RiftCandle", "RiftSmoothie", "RiftJar", "Crucifix", "Lotus", "LotusPetal" }, ColorHeader = magicalGradientColor },
+    { Name = "ENTITIES", Color = Color3.fromRGB(149, 63, 72), Items = { "StopSign", "PocketMirror", "Stem", "CeramicStem", "SecretCD" } },
+    { Name = "BATTLE", Color = Color3.fromRGB(196, 147, 255), Items = { "GoldGun", "BigBomb", "BigPropTool", "Bomb", "Knockbomb", "Nanner", "NannerPeel", "SnakeBox", "StopSign", "BoxingGloves" }, ColorHeader = battleGradientColor },
+    { Name = "EVENTS", Color = Color3.fromRGB(255, 140, 64), Items = { "LibraryHintPaperHard", "KeyRetro", "HolyGrenade", "Candy", "CandyBag", "Haybale", "CandyBasket", "CandyBucket", "WizardHat", "LargeCandyBag", "GiantGummyworm", "SmallCauldron", "BrokenHeadstone", "ChocolateCrate" } },
+    { Name = "KEYS", Color = Color3.fromRGB(214, 178, 111), Items = { "KeyElectrical", "Lockpick", "SkeletonKey", "Key", "KeyBackdoor", "KeyIron", "KeyGarage", "KeyJewelry" } },
+    { Name = "DRIVES", Color = Color3.fromRGB(150, 140, 255), Items = { "Drive", "Drive_EGG", "Drive_Flashlight", "Drive_ThreatDetector", "Drive_Translator" } },
+    { Name = "ESSENTIAL", Color = Color3.fromRGB(235, 235, 210), Items = { "HintBook", "LibraryHintPaper", "GeneratorFuse", "LibraryHintPaperHard", "ArchivesTicket", "FihFlakes", "SallyToy", "ArchivesStorageBox", "SecretCD" } },
+    { Name = "CURRENCIES", Color = Color3.fromRGB(255, 184, 243), Items = { "TipJar", "LotusPetal", "CoinRoll", "HoneyPot", "SalvageScrap" } },
+    { Name = "ADMIN", Color = Color3.fromRGB(255, 0, 255), Items = { "KnockbackStick", "Scanner", "CartToGo" } },
+    {
+        Name = "UNSORTED",
+        Color = Color3.fromRGB(200, 200, 200),
+        Items = {
+            "Buddy",
+            "PuzzlePainting",
+            "CringlePresent",
+            "Mug",
+            "RushSpawnBottle",
+            "droninit",
+            "Holy_Hand_Grenade",
+            "Socker",
+            "thatguysmasterpiece",
+            "Envelope",
+            "shieldmini",
+            "bigshield",
+            "AmongUs_Potion",
+            "EvilDollar",
+            "M249",
+        },
+    },
+}) do
+    v47:AddCategory(v49.Name, v49.Color, v49.ColorHeader)
+    for v50, v51 in ipairs(v49.Items) do
+        local v52 = t4[v51]
+        if not v52 then
+            v52 = {}
+            t4[v51] = v52
+        end
+        table.insert(v52, v49.Name)
+    end
+end
+if definitions then
+    for v54, v55 in ipairs(definitions:GetChildren()) do
+        local safeImage = v55:GetAttribute("Image") or ""
+        local safeName = v55:GetAttribute("DisplayName") or v55.Name
+
+        v47:AddIcon(
+            v55.Name,
+            v55.Name,
+            safeImage,
+            nil,
+            safeName,
+            nil,
+            nil,
+            t4[v55.Name] or "UNSORTED"
+        )
+    end
+end
+v47:RecolorByPosition(false)
+do
+    local salvageContents = v46:FindFirstChild("SALVAGEContents", true)
+    if salvageContents then
+        local black = Color3.fromRGB(0, 0, 0)
+        local checkedGray = Color3.fromRGB(32, 32, 32)
+        local function setCardColor(card, selected)
+            local tint = selected and checkedGray or black
+            card.BackgroundColor3 = tint
+            local holder = card:FindFirstChild("Container")
+            if holder and holder:IsA("GuiObject") then
+                holder.BackgroundColor3 = tint
+            end
+        end
+        for _, card in ipairs(salvageContents:GetChildren()) do
+            if card:IsA("GuiButton") then
+                local marked = card:FindFirstChild("IsSelected", true)
+                local selected = marked and marked:IsA("GuiObject")
+                    and marked.Visible or false
+                setCardColor(card, selected)
+                if marked and marked:IsA("GuiObject") then
+                    marked:GetPropertyChangedSignal("Visible"):Connect(function()
+                        setCardColor(card, marked.Visible)
+                    end)
+                end
+                card.Activated:Connect(function()
+                    local previousMarker = marked and marked:IsA("GuiObject")
+                        and marked.Visible or nil
+                    task.defer(function()
+                        if marked and marked:IsA("GuiObject")
+                            and marked.Visible ~= previousMarker then
+                            selected = marked.Visible
+                        else
+                            selected = not selected
+                        end
+                        setCardColor(card, selected)
+                    end)
+                end)
+            end
+        end
+    end
+end
+
+--// Single Give Items button \\--
+local giveItemsInput = require(InputTypes.Button).new("Give Items", v46)
+    :AddParameter(v31)
+    :AddParameter(v47)
+    :SetActive(true)
+
+StickyButton.new(giveItemsInput, v46, v1.Container)
+
+local function RunRemote(url, tag)
+    task.spawn(function()
+        local success, err = pcall(function()
+            local source = game:HttpGet(url)
+            assert(type(source) == "string" and #source > 0, tag .. " source is empty")
+            local compiled, compileError = loadstring(source)
+            assert(compiled, compileError)
+            compiled()
+        end)
+        if not success then
+            warn("[" .. tag .. "] Launch failed:", err)
+        end
+    end)
+end
+
+giveItemsInput.UI.Button.Activated:Connect(function()
+    local selectedItems = v47:Read()
+    if not selectedItems then
+        return
+    end
+
+    -- NVCS-3000
+    if selectedItems.Scanner == "Scanner" then
+        if not IsLocalPlayerSelected() then
+            warn("[NVCS-3000] You must select yourself first!")
+            return
+        end
+
+        RunRemote("https://raw.githubusercontent.com/richdud/Dev-Panel-doorsrbx/main/nvcs-3000%20(droppable)", "NVCS-3000")
+    end
+
+    -- Honcho's Mug
+    if selectedItems.Mug == "Mug" then
+        if not IsLocalPlayerSelected() then
+            warn("[Honcho Mug] You must select yourself first!")
+            return
+        end
+
+        RunRemote("https://raw.githubusercontent.com/richdud/Dev-Panel-doorsrbx/main/mug", "Honcho Mug")
+    end
+end)
+
+
+--// Scanner drops horizontal \\--
+task.spawn(function()
+    local drops = workspace:WaitForChild("Drops", 30)
+    if not drops then return end
+    drops.ChildAdded:Connect(function(drop)
+        task.wait(0.1)
+        local name = tostring(drop:GetAttribute("Pickup") or drop.Name)
+        if not (name:find("Scanner") or name:find("NVCS")) then return end
+        for _, w in ipairs(drop:GetChildren()) do
+            if w:IsA("Weld") and w.Part1 and w.Part1.Name ~= "ItemDropPickup" then
+                w.C0 = w.C0 * CFrame.Angles(0, 0, math.rad(90))
+            end
+        end
+    end)
+end)
+
+local v65 = CreateContainer("Room")
+local v66 = require(InputTypes.ButtonStack).new("Lights", v65)
+local v67 = require(InputTypes.ColorSelect).new("Light Color", v65, Color3.fromRGB(206, 173, 144))
+v66:AddButton("LightRoom", "LIGHT ROOM"):AddParameter(v67):SetActive(true)
+local v68 = require(InputTypes.Slider).new("Flicker Duration", v65, 2, NumberRange.new(-10000, 10000), 2)
+local v69 = require(InputTypes.Slider).new("Lights Affected", v65, 100, NumberRange.new(-10000, 10000))
+local v70 = require(InputTypes.Switch).new("Affect All Rooms", v65, true)
+v66:AddButton("Break Lights", "BREAK LIGHTS"):AddParameter(v69):AddParameter(v70):SetActive(true)
+v66:AddButton("Flicker Lights", "FLICKER LIGHTS"):AddParameter(v68):AddParameter(v69):AddParameter(v70):SetActive(true)
+v7:AddElements({ v9, v12, vMorphs, v17 })
+v6:AddElements({ v9, v30 })
+v8:AddElements({ v9, v65 })
+local v71 = CreatePage("Debug", "rbxassetid://123210930333739")
+local v72 = CreateContainer("Debug")
+local v73 = require(InputTypes.ButtonStack).new("DebugButtons", v72)
+v73:AddButton("ShowNodeGraphs", "Toggle Show NodeGraph", Color3.fromRGB(255, 0, 0)):SetActive(true)
+v73:AddButton("EnableAllExistingMonumentDebug", "Enable (spawned) Monument Debug", Color3.fromRGB(0, 255, 0)):SetActive(true)
+v73:AddButton("DisableAllExistingMonumentDebug", "Disable (spawned) Monument Debug", Color3.fromRGB(255, 0, 0)):SetActive(true)
+v73:AddButton("MovementCompDebugEnable", "Enable path vis for 3d npcs", Color3.fromRGB(255, 198, 84)):SetActive(true)
+v73:AddButton("MovementCompDebugDisable", "Disable path vis for 3d npcs", Color3.fromRGB(230, 88, 255)):SetActive(true)
+v73:AddButton("SpawnBranches", "make branches (experimental)", Color3.fromRGB(230, 88, 255)):SetActive(true)
+v73:AddButton("LiveReplaceRoom", "live replace a room", Color3.fromRGB(230, 88, 255)):SetActive(true)
+local v74 = require(InputTypes.TextField).new("SkipToRoom", v72, "0", "0")
+v73:AddButton("SkipToRoomNumber", "Skip", Color3.fromRGB(234, 255, 249)):SetActive(true):AddParameter(v74)
+v73:AddButton("ArchivesTimeFastforward", "Toggle Archives time fastforwarding", Color3.fromRGB(234, 214, 115)):SetActive(true)
+v71:AddElements({ v9, v72 })
+task.spawn(function()
+    task.wait(1)
+    for _, v in pairs(v30:GetDescendants()) do
+        if (v:IsA("TextLabel") or v:IsA("TextButton")) and v.Text == "A-90" then
+            local btn = v:IsA("TextButton") and v or v:FindFirstAncestorWhichIsA("TextButton") or v.Parent:FindFirstChildWhichIsA("TextButton")
+
+            if btn and btn:IsA("TextButton") then
+                btn.Activated:Connect(function()
+                    local adminRemote = game:GetService("ReplicatedStorage"):FindFirstChild("AdminRemote")
+                    if adminRemote then
+                        adminRemote:FireServer("A90Player")
+                    end
+                end)
+            end
+        end
+    end
+end)
+
+
+
