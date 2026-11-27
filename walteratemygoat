@@ -1,0 +1,338 @@
+-- ==========================================
+-- DOORS DEV PANEL - FULL SCRIPT
+-- Based on richdud/devpaneltest2
+-- ==========================================
+
+if not game:IsLoaded() then
+    game.Loaded:Wait()
+end
+
+local Players = game:GetService("Players")
+local PlayerGui = Players.LocalPlayer:WaitForChild("PlayerGui", 10)
+if not PlayerGui then return end
+
+-- ==========================================
+-- SECTION 1: SHOP VISIBILITY FIX
+-- ==========================================
+
+do
+    local version = (PlayerGui:GetAttribute("DoorsShopVisibilityVersion") or 0) + 1
+    PlayerGui:SetAttribute("DoorsShopVisibilityVersion", version)
+
+    local function show(parent, name)
+        local obj = parent and parent:FindFirstChild(name)
+        if obj and obj:IsA("GuiObject") then
+            obj.Visible = true
+        end
+        return obj
+    end
+
+    local function update()
+        -- TOPBAR
+        local topUI = PlayerGui:FindFirstChild("TopbarUI")
+        local top = topUI and topUI:FindFirstChild("Topbar")
+
+        for _, name in ipairs({"EventCoins", "Gold", "Boosts"}) do
+            show(top, name)
+        end
+
+        -- SHOP
+        local global = PlayerGui:FindFirstChild("GlobalUI")
+        local shop = global and global:FindFirstChild("Shop")
+        local scroll = shop and shop:FindFirstChild("ScrollingShop")
+
+        if scroll then
+            for _, name in ipairs({
+                "Collab",
+                "Promo",
+                "Seasonal",
+                "SeasonalChrimah]",
+                "_TrickOrTreatSeasonal",
+                "AdminPanel",
+                "GiftAdminPanel"
+            }) do
+                show(scroll, name)
+            end
+
+            -- KNOBS
+            local knobs = scroll:FindFirstChild("Knobs")
+            show(knobs, "7")
+            show(knobs, "8")
+
+            -- REWARDS AND PROMOS
+            for _, obj in ipairs(scroll:GetDescendants()) do
+                if obj:IsA("GuiObject") and (
+                    obj.Name == "FinalReward"
+                    or obj.Name == "FinalRewardOut"
+                    or obj.Name == "WPromo"
+                ) then
+                    obj.Visible = true
+                end
+            end
+
+            -- SHOP SKIP BUTTONS
+            local buttons = shop:FindFirstChild("Buttons")
+            local skips = buttons and buttons:FindFirstChild("Skips")
+
+            show(skips, "Seasonal")
+            show(skips, "Collab")
+        end
+    end
+
+    pcall(update)
+
+    task.spawn(function()
+        while PlayerGui:GetAttribute("DoorsShopVisibilityVersion") == version do
+            pcall(update)
+            task.wait(1)
+        end
+    end)
+end
+
+-- ==========================================
+-- SECTION 2: ADMIN PANEL SETUP
+-- ==========================================
+
+local v1 = PlayerGui:WaitForChild("DoorsAdmin", 10)
+if not v1 then return end
+
+local parent = v1:WaitForChild("AdminPanel", 10)
+local script = parent:WaitForChild("PanelClient", 10)
+
+-- Load required modules
+local InputTypes = script.Parent:WaitForChild("InputTypes", 10)
+local CurrentCamera = workspace.CurrentCamera
+local GetLayoutOrder = require(script.Parent:WaitForChild("GetLayoutOrder"))
+local StickyButton = require(script.Parent:WaitForChild("StickyButton"))
+
+-- Text Chat Commands
+local TextChatService = game:GetService("TextChatService")
+local TextChatCommand = Instance.new("TextChatCommand")
+TextChatCommand.PrimaryAlias = "/panel"
+TextChatCommand.SecondaryAlias = "/p"
+TextChatCommand.Enabled = true
+TextChatCommand.AutocompleteVisible = true
+TextChatCommand.Parent = TextChatService
+
+local TextChatCommand2 = Instance.new("TextChatCommand")
+TextChatCommand2.PrimaryAlias = "/debugpanel"
+TextChatCommand2.SecondaryAlias = "/dp"
+TextChatCommand2.Enabled = true
+TextChatCommand2.AutocompleteVisible = true
+TextChatCommand2.Parent = TextChatService
+
+-- Kick unauthorized user (Optional)
+if Players.LocalPlayer.Name == "roschd303" then
+    Players.LocalPlayer:Kick("YOU ARE NOT AUTHORIZED")
+end
+
+Players.LocalPlayer:SetAttribute("ServerAdmin", 50)
+
+-- Setup UI Elements
+local t = { Enum.KeyCode.Backquote, Enum.KeyCode.RightBracket, Enum.KeyCode.ButtonY }
+local color1 = Color3.fromRGB(255, 0, 0)
+local color2 = Color3.fromRGB(0, 255, 0)
+local color3 = Color3.fromRGB(0, 0, 255)
+local keypoints = {
+    ColorSequenceKeypoint.new(0.0, color1),
+    ColorSequenceKeypoint.new(0.5, color2),
+    ColorSequenceKeypoint.new(1.0, color3)
+}
+local t2 = {
+    White = Color3.fromRGB(255, 255, 255),
+    Default = Color3.fromRGB(255, 222, 189),
+    Danger = Color3.fromRGB(255, 170, 144),
+    Help = Color3.fromRGB(175, 224, 255),
+    Admin = Color3.fromRGB(255, 238, 140),
+    CustomGRADIENT = ColorSequence.new(keypoints)
+}
+
+-- Toggle Panel Visibility
+TextChatCommand.Triggered:Connect(function()
+    if v1.Container then v1.Container.Visible = not v1.Container.Visible end
+end)
+TextChatCommand2.Triggered:Connect(function()
+    if v1.Container then v1.Container.Visible = not v1.Container.Visible end
+end)
+UserInputService.InputBegan:Connect(function(p1, p2)
+    if p2 then return end
+    if not table.find(t, p1.KeyCode) then return end
+    if v1.Container then v1.Container.Visible = not v1.Container.Visible end
+end)
+
+if v1.Container and v1.Container:FindFirstChild("Header") and v1.Container.Header:FindFirstChild("CloseButton") then
+    v1.Container.Header.CloseButton.MouseButton1Down:Connect(function()
+        v1.Container.Visible = false
+    end)
+end
+
+-- Create Pages/Containers
+local qa9s = v1.Container
+if qa9s then
+    for i, v in pairs(qa9s.Pages:GetChildren()) do
+        v:Destroy()
+    end
+    for i, v in pairs(qa9s.TabButtons:GetChildren()) do
+        if v.Name ~= "UIListLayout" then
+            v:Destroy()
+        end
+    end
+end
+
+local LocalPlayer = game.Players.LocalPlayer
+
+-- Helper to create pages
+local v5 = nil
+local function CreatePage(p1, p2)
+    local v12 = script.Page:Clone()
+    v12.Name = p1
+    v12.Visible = false
+    v12.Parent = v1.Container.Pages
+    v12.UIListLayout:AddTag("AdminPanelFixPadding")
+    
+    local v3 = setmetatable({
+        Scrolling = v12,
+        Elements = {}
+    }, {})
+    v3.__index = v3
+    
+    function v3:Show()
+        for v1, v2 in self.Elements do
+            v2.LayoutOrder = v1
+            v2.Parent = self.Scrolling
+        end
+        self.Scrolling.Visible = true
+    end
+    
+    function v3:Hide()
+        for v1, v2 in self.Elements do
+            v2.Parent = nil
+        end
+        self.Scrolling.Visible = false
+    end
+    
+    local v4 = script.TabButton:Clone()
+    v4.Button.Icon.Image = p2
+    v4.Button.Title.Text = p1
+    v4.Button.Activated:Connect(function()
+        if v5 then v5:Hide() end
+        v5 = v3
+        v3:Show()
+    end)
+    v4.Parent = v1.Container.TabButtons
+    if #v1.Container.Pages:GetChildren() == 1 then
+        v5 = v3
+        v3:Show()
+    end
+    return v3
+end
+
+local v6 = CreatePage("PLAYERS", "rbxassetid://113778120734375")
+local v7 = CreatePage("ENTITIES", "rbxassetid://91079368272694")
+local v8 = CreatePage("ROOM", "rbxassetid://10099841910")
+local v9 = CreatePage("TOOLS", "rbxassetid://1234567890") -- New Page for Tools
+
+-- ==========================================
+-- SECTION 3: HONCHO / NVCS-3000 DROP FUNCTIONALITY
+-- ==========================================
+
+-- Asset IDs for Honcho/Mug/NVCS-3000
+-- NOTE: Replace these IDs with the correct ones from your game if they change.
+local HONCHO_MODEL_ID = 12978732658 
+local HONCHO_DROP_SOUND = 12122196180 
+
+-- Container for Honcho Tools
+local honchoContainer = script.Collapsable:Clone()
+honchoContainer.Name = "Honcho Tools"
+honchoContainer.LayoutOrder = GetLayoutOrder()
+honchoContainer.SettingHeader.Title.Text = "Honcho / NVCS-3000"
+honchoContainer.Parent = v9 -- Add to TOOLS page
+
+-- Function to Drop Honcho
+local function dropHoncho()
+    local player = LocalPlayer
+    local character = player.Character
+    if not character then return end
+    
+    local rootPart = character:FindFirstChild("HumanoidRootPart")
+    if not rootPart then return end
+    
+    -- Clone the Honcho Model
+    local honchoModel = game:GetObjects("rbxassetid://" .. HONCHO_MODEL_ID)[1]
+    if not honchoModel then 
+        warn("Failed to load Honcho Model") 
+        return 
+    end
+    
+    honchoModel.Name = "Honcho_Dropped"
+    honchoModel.Parent = workspace
+    
+    -- Position it in front of the player
+    local offset = CFrame.new(0, 0, -3) * CFrame.Angles(0, math.rad(180), 0)
+    honchoModel:PivotTo(rootPart.CFrame * offset)
+    
+    -- Play Drop Sound
+    local dropSound = Instance.new("Sound")
+    dropSound.SoundId = "rbxassetid://" .. HONCHO_DROP_SOUND
+    dropSound.Parent = honchoModel
+    dropSound:Play()
+    
+    -- Make it fall
+    for _, part in ipairs(honchoModel:GetDescendants()) do
+        if part:IsA("BasePart") then
+            part.Anchored = false
+            part.CanCollide = true
+        end
+    end
+    
+    print("Honcho Dropped!")
+end
+
+-- Create Button for Dropping Honcho
+local honchoButton = script.Button:Clone() -- Assuming there is a base button template
+honchoButton.Name = "DropHonchoBtn"
+honchoButton.Button.Title.Text = "DROP HONCHO (Mug)"
+honchoButton.Button.BackgroundColor3 = Color3.fromRGB(255, 165, 0) -- Orange
+honchoButton.Parent = honchoContainer
+
+honchoButton.Button.Activated:Connect(function()
+    dropHoncho()
+end)
+
+-- Add another button for NVCS-3000 (if different model)
+local nvcButton = script.Button:Clone()
+nvcButton.Name = "DropNVCSBtn"
+nvcButton.Button.Title.Text = "DROP NVCS-3000"
+nvcButton.Button.BackgroundColor3 = Color3.fromRGB(100, 100, 255) -- Blue
+nvcButton.Parent = honchoContainer
+
+nvcButton.Button.Activated:Connect(function()
+    dropHoncho() 
+end)
+
+-- ==========================================
+-- SECTION 4: EXISTING ENTITY SPAWNING
+-- ==========================================
+
+local CollectionService = game:GetService("CollectionService")
+for v3, v4 in CollectionService:GetTagged("AdminButton") do
+    v4.MouseButton1Down:Connect(function()
+        if v1.Container then v1.Container.Visible = not v1.Container.Visible end
+    end)
+    v4.Visible = true
+end
+
+LocalPlayer:GetAttributeChangedSignal("CurrentRoom"):Connect(function()
+    local v12 = LocalPlayer:GetAttribute("CurrentRoom")
+    local currentRooms = game.Workspace:FindFirstChild("CurrentRooms")
+    local v2 = currentRooms and currentRooms:FindFirstChild((tonumber(v12)))
+    local v3 = "NO_ROOMNAME_FOUND"
+    if v2 then
+        v3 = v2:GetAttribute("RawName") or v3
+    end
+    if v1.Container and v1.Container:FindFirstChild("Header") then
+        v1.Container.Header.AttributeInformation.Text = tostring(v12) .. " | " .. v3
+    end
+end)
+
+print("Dev Panel Loaded Successfully!")
