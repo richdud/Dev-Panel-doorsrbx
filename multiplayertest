@@ -1,0 +1,1174 @@
+-- ==========================================
+-- MULTIPLAYER DOORS DEV PANEL
+-- ==========================================
+
+if not game:IsLoaded() then
+    game.Loaded:Wait()
+end
+
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local TextChatService = game:GetService("TextChatService")
+
+local LocalPlayer = Players.LocalPlayer
+local PlayerGui = LocalPlayer:WaitForChild("PlayerGui", 10)
+if not PlayerGui then return end
+
+-- ==========================================
+-- SECTION 1: SHOP VISIBILITY FIX (Local Only)
+-- ==========================================
+
+do
+    local version = (PlayerGui:GetAttribute("DoorsShopVisibilityVersion") or 0) + 1
+    PlayerGui:SetAttribute("DoorsShopVisibilityVersion", version)
+
+    local function show(parent, name)
+        local obj = parent and parent:FindFirstChild(name)
+        if obj and obj:IsA("GuiObject") then
+            obj.Visible = true
+        end
+        return obj
+    end
+
+    local function update()
+        -- TOPBAR
+        local topUI = PlayerGui:FindFirstChild("TopbarUI")
+        local top = topUI and topUI:FindFirstChild("Topbar")
+
+        for _, name in ipairs({"EventCoins", "Gold", "Boosts"}) do
+            show(top, name)
+        end
+
+        -- SHOP
+        local global = PlayerGui:FindFirstChild("GlobalUI")
+        local shop = global and global:FindFirstChild("Shop")
+        local scroll = shop and shop:FindFirstChild("ScrollingShop")
+
+        if scroll then
+            for _, name in ipairs({
+                "Collab",
+                "Promo",
+                "Seasonal",
+                "SeasonalChrimah]",
+                "_TrickOrTreatSeasonal",
+                "AdminPanel",
+                "GiftAdminPanel"
+            }) do
+                show(scroll, name)
+            end
+
+            local knobs = scroll:FindFirstChild("Knobs")
+            show(knobs, "7")
+            show(knobs, "8")
+
+            for _, obj in ipairs(scroll:GetDescendants()) do
+                if obj:IsA("GuiObject") and (
+                    obj.Name == "FinalReward"
+                    or obj.Name == "FinalRewardOut"
+                    or obj.Name == "WPromo"
+                ) then
+                    obj.Visible = true
+                end
+            end
+
+            local buttons = shop:FindFirstChild("Buttons")
+            local skips = buttons and buttons:FindFirstChild("Skips")
+            show(skips, "Seasonal")
+            show(skips, "Collab")
+        end
+    end
+
+    pcall(update)
+
+    task.spawn(function()
+        while PlayerGui:GetAttribute("DoorsShopVisibilityVersion") == version do
+            pcall(update)
+            task.wait(1)
+        end
+    end)
+end
+
+-- ==========================================
+-- SECTION 2: ADMIN PANEL SETUP
+-- ==========================================
+
+local v1 = PlayerGui:WaitForChild("DoorsAdmin", 10)
+if not v1 then return end
+
+local parent = v1:WaitForChild("AdminPanel", 10)
+local script = parent:WaitForChild("PanelClient", 10)
+
+local InputTypes = script.Parent:WaitForChild("InputTypes", 10)
+local CurrentCamera = workspace.CurrentCamera
+local GetLayoutOrder = require(script.Parent:WaitForChild("GetLayoutOrder"))
+local StickyButton = require(script.Parent:WaitForChild("StickyButton"))
+
+-- Text Chat Commands
+local TextChatCommand = Instance.new("TextChatCommand")
+TextChatCommand.PrimaryAlias = "/panel"
+TextChatCommand.SecondaryAlias = "/p"
+TextChatCommand.Enabled = true
+TextChatCommand.AutocompleteVisible = true
+TextChatCommand.Parent = TextChatService
+
+local TextChatCommand2 = Instance.new("TextChatCommand")
+TextChatCommand2.PrimaryAlias = "/debugpanel"
+TextChatCommand2.SecondaryAlias = "/dp"
+TextChatCommand2.Enabled = true
+TextChatCommand2.AutocompleteVisible = true
+TextChatCommand2.Parent = TextChatService
+
+-- ==========================================
+-- SECTION 3: MULTIPLAYER MORPH SYSTEM
+-- ==========================================
+
+-- 1. Create the RemoteEvent if it doesn't exist
+local MorphEvent = ReplicatedStorage:WaitForChild("MorphEvent", 5)
+if not MorphEvent then
+    MorphEvent = Instance.new("RemoteEvent")
+    MorphEvent.Name = "MorphEvent"
+    MorphEvent.Parent = ReplicatedStorage
+end
+
+-- 2. Global Variables for Morph State
+_G.MorphModels = _G.MorphModels or {}
+_G.TransformedIntoAnyMorph = _G.TransformedIntoAnyMorph or false
+_G.StompGigglesEnabled = _G.StompGigglesEnabled ~= false
+
+-- Helper: Track morph models to clean them up later
+local function trackMorphModel(model)
+    if model then
+        table.insert(_G.MorphModels, model)
+    end
+    return model
+end
+
+-- Helper: Reset morph
+local function resetMorph()
+    _G.TransformedIntoAnyMorph = false
+    for _, model in ipairs(_G.MorphModels) do
+        if model and model.Parent then
+            model:Destroy()
+        end
+    end
+    table.clear(_G.MorphModels)
+    
+    local gigglesFolder = workspace:FindFirstChild("GigglesFake")
+    if gigglesFolder then
+        gigglesFolder:Destroy()
+    end
+    
+    local character = LocalPlayer.Character
+    if character then
+        for _, item in ipairs(character:GetDescendants()) do
+            if item:IsA("BasePart") then
+                item.LocalTransparencyModifier = 0
+                if item.Name == "Head" then
+                    item.Transparency = 0
+                end
+            elseif item:IsA("Decal") or item:IsA("Texture") then
+                item.Transparency = 0
+            end
+        end
+        local humanoid = character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+            humanoid.HipHeight = 2
+        end
+        local root = character:FindFirstChild("HumanoidRootPart")
+        if root then
+            root.Anchored = false
+        end
+    end
+end
+
+-- Helper: Hide character locally
+local function hideCharacterLocally(character)
+    if not character then return end
+    for _, v in pairs(character:GetChildren()) do
+        if v:IsA("BasePart") then
+            v.LocalTransparencyModifier = 1
+            for _, d in pairs(v:GetDescendants()) do
+                if d:IsA("Decal") or d:IsA("Texture") then
+                    d.Transparency = 1
+                end
+            end
+        elseif v:IsA("Accessory") then
+            local handle = v:FindFirstChild("Handle")
+            if handle then
+                handle.LocalTransparencyModifier = 1
+            end
+        end
+    end
+    local head = character:FindFirstChild("Head")
+    if head then
+        head.Transparency = 1
+    end
+end
+
+-- Helper: Play sounds in model
+local function playAllSoundsInModel(model)
+    if not model then return end
+    for _, sound in ipairs(model:GetDescendants()) do
+        if sound:IsA("Sound") then
+            sound.Looped = true
+            sound.Volume = math.clamp(sound.Volume or 1, 0.8, 1.5)
+            pcall(function()
+                sound:Play()
+            end)
+        end
+    end
+end
+
+-- ==========================================
+-- MORPH DEFINITIONS
+-- ==========================================
+
+-- FIGURE
+local function transformIntoFigure()
+    if _G.TransformedIntoAnyMorph then return end
+    _G.TransformedIntoAnyMorph = true
+    
+    local figureNew = trackMorphModel(game:GetObjects("rbxassetid://116871580020558")[1])
+    if not figureNew then
+        _G.TransformedIntoAnyMorph = false
+        return
+    end
+    
+    local gigglesDed = Instance.new("Folder")
+    gigglesDed.Name = "GigglesFake"
+    gigglesDed.Parent = workspace
+    
+    local stompCooldown = false
+    local footstepType = 0
+    local footstepType2 = 0
+    local canwalk = true
+    
+    figureNew.Parent = workspace
+    local StompAnim, IdleAnim, WalkAnim, RunAnim
+    local animFolder = (game.GameId == 6627207668) and figureNew.AnimsTest or figureNew.Anims
+    StompAnim = figureNew.AnimationController.Animator:LoadAnimation(animFolder.Stomp)
+    IdleAnim = figureNew.AnimationController.Animator:LoadAnimation(animFolder.Idle)
+    WalkAnim = figureNew.AnimationController.Animator:LoadAnimation(animFolder.Walk)
+    RunAnim = figureNew.AnimationController.Animator:LoadAnimation(animFolder.Run)
+    
+    IdleAnim:Play()
+    
+    WalkAnim:GetMarkerReachedSignal("Footstep"):Connect(function()
+        if canwalk then
+            if footstepType2 == 1 then
+                footstepType2 = 0
+                figureNew.LeftFoot.Footstep:Play()
+                figureNew.LeftFoot.FootstepLow:Play()
+            else
+                footstepType2 = 1
+                figureNew.RightFoot.Footstep:Play()
+                figureNew.RightFoot.FootstepLow:Play()
+            end
+        end
+    end)
+    
+    RunAnim:GetMarkerReachedSignal("Footstep"):Connect(function()
+        if canwalk then
+            if footstepType2 == 1 then
+                footstepType2 = 0
+                figureNew.LeftFoot.Footstep:Play()
+                figureNew.LeftFoot.FootstepLow:Play()
+            else
+                footstepType2 = 1
+                figureNew.RightFoot.Footstep:Play()
+                figureNew.RightFoot.FootstepLow:Play()
+            end
+        end
+    end)
+    
+    local runningConn
+    runningConn = LocalPlayer.Character.Humanoid.Running:Connect(function(speed)
+        if not figureNew.Parent then
+            runningConn:Disconnect()
+            return
+        end
+        if speed >= 20 then
+            IdleAnim:Stop()
+            WalkAnim:Stop()
+            if not RunAnim.IsPlaying then
+                RunAnim:Play()
+                RunAnim:AdjustSpeed(1.5)
+            end
+        elseif speed >= 5 then
+            IdleAnim:Stop()
+            RunAnim:Stop()
+            if not WalkAnim.IsPlaying then
+                WalkAnim:Play()
+            end
+        else
+            WalkAnim:Stop()
+            RunAnim:Stop()
+            if not IdleAnim.IsPlaying then
+                IdleAnim:Play()
+            end
+        end
+    end)
+    
+    local function footstepSound()
+        if footstepType == 1 then
+            footstepType = 0
+            figureNew.LeftFoot.Footstep:Play()
+            figureNew.LeftFoot.FootstepLow:Play()
+        else
+            footstepType = 1
+            figureNew.RightFoot.Footstep:Play()
+            figureNew.RightFoot.FootstepLow:Play()
+        end
+    end
+    
+    local function killTheCacaoBallButWhite(ahhball)
+        if not ahhball or not _G.StompGigglesEnabled then return end
+        local newBall = ahhball:Clone()
+        ahhball:Destroy()
+        newBall.Name = "StompedGiggle" .. LocalPlayer.Name
+        newBall.Parent = gigglesDed
+        newBall:SetAttribute("RealName", "StompedGiggle")
+        newBall.Root.Sound_Laugh:Stop()
+        task.wait(0.3)
+        newBall.Root.Sound_Kill:Play()
+        task.wait(0.6)
+        for _, GiggleThing in pairs(newBall:GetDescendants()) do
+            if GiggleThing:IsA("NoCollisionConstraint") or GiggleThing:IsA("BallSocketConstraint") then
+                GiggleThing:Destroy()
+            end
+        end
+        task.wait(5)
+        for _, GigglePart in pairs(newBall:GetDescendants()) do
+            if GigglePart:IsA("BasePart") then
+                game:GetService("TweenService"):Create(GigglePart, TweenInfo.new(5, Enum.EasingStyle.Linear), {Transparency = 1}):Play()
+            end
+        end
+        task.wait(6)
+        newBall:Destroy()
+    end
+    
+    local function getNearestWhileStomping()
+        local nearest = 5
+        local nearestGiggle = nil
+        local giggles = workspace.GigglesFake:GetChildren()
+        for _, Giggle in pairs(giggles) do
+            if Giggle and Giggle:FindFirstChild("Root") then
+                local dist = (figureNew:GetPivot().Position - Giggle.Root.Position).Magnitude
+                if dist <= nearest then
+                    nearest = dist
+                    nearestGiggle = Giggle
+                end
+            end
+        end
+        if nearestGiggle then
+            task.spawn(killTheCacaoBallButWhite, nearestGiggle)
+        end
+    end
+    
+    local function stompF()
+        if stompCooldown then return end
+        stompCooldown = true
+        canwalk = false
+        LocalPlayer.Character.HumanoidRootPart.Anchored = true
+        StompAnim:Play()
+        getNearestWhileStomping()
+        StompAnim:GetMarkerReachedSignal("Stomp"):Connect(function()
+            figureNew.RightFoot.FootstepLowLoud:Play()
+        end)
+        StompAnim:GetMarkerReachedSignal("Footstep"):Connect(footstepSound)
+        StompAnim:GetMarkerReachedSignal("Roar"):Connect(function()
+            figureNew.Head.Growl:Play()
+        end)
+        StompAnim.Ended:Wait()
+        canwalk = true
+        LocalPlayer.Character.HumanoidRootPart.Anchored = false
+        stompCooldown = false
+    end
+    
+    local giggles = {}
+    local function addGiggle(giggle)
+        table.insert(giggles, giggle)
+    end
+    local function checkIfIsAGiggleRagdoll(giggle)
+        task.spawn(function()
+            local tries = 0
+            repeat
+                task.wait()
+                tries += 1
+            until tries >= 20 or giggle:FindFirstChild("Root")
+            if giggle:FindFirstChild("Root")
+            and giggle.Root:FindFirstChild("Sound_Kill")
+            and giggle.Root:FindFirstChild("Sound_Laugh")
+            and giggle:FindFirstChild("AnimationController") then
+                addGiggle(giggle)
+            end
+        end)
+    end
+    workspace.ChildAdded:Connect(checkIfIsAGiggleRagdoll)
+    
+    local renderConn
+    renderConn = RunService.RenderStepped:Connect(function()
+        if not figureNew.Parent or not _G.TransformedIntoAnyMorph then
+            renderConn:Disconnect()
+            return
+        end
+        local char = LocalPlayer.Character
+        local root = char and char:FindFirstChild("HumanoidRootPart")
+        if root then
+            figureNew:PivotTo(root.CFrame)
+        end
+        if char and char:FindFirstChild("Humanoid") then
+            char.Humanoid.HipHeight = 2.3
+        end
+        hideCharacterLocally(char)
+    end)
+    
+    LocalPlayer:GetMouse().KeyDown:Connect(function(key)
+        if not figureNew.Parent then return end
+        if key == "r" then
+            stompF()
+        end
+    end)
+end
+
+-- GLOOMBAT
+local function transformIntoGloombat()
+    if _G.TransformedIntoAnyMorph then return end
+    _G.TransformedIntoAnyMorph = true
+    local figureNew = trackMorphModel(game:GetObjects("rbxassetid://72951473062980")[1])
+    if not figureNew then
+        _G.TransformedIntoAnyMorph = false
+        return
+    end
+    figureNew.Parent = workspace
+    local IdleAnim
+    local testingPlace = (game.GameId == 6627207668)
+    if testingPlace then
+        IdleAnim = figureNew.AnimationController:LoadAnimation(figureNew.AnimIdleT)
+        for _, Sounds in pairs(figureNew.Main.Sounds["test game"]:GetChildren()) do
+            Sounds:Clone().Parent = figureNew.Main
+        end
+    else
+        IdleAnim = figureNew.AnimationController:LoadAnimation(figureNew.AnimIdle)
+        for _, Sounds in pairs(figureNew.Main.Sounds["DOORS"]:GetChildren()) do
+            Sounds:Clone().Parent = figureNew.Main
+        end
+    end
+    figureNew.Main.Sounds:Destroy()
+    IdleAnim:Play()
+    figureNew.Main.SoundFlying:Play()
+    figureNew.Main.SoundFlyingClose:Play()
+    
+    local renderConn
+    renderConn = RunService.RenderStepped:Connect(function()
+        if not figureNew.Parent or not _G.TransformedIntoAnyMorph then
+            renderConn:Disconnect()
+            return
+        end
+        local char = LocalPlayer.Character
+        local root = char and char:FindFirstChild("HumanoidRootPart")
+        if root then
+            figureNew:PivotTo(root.CFrame)
+        end
+        hideCharacterLocally(char)
+    end)
+    
+    LocalPlayer:GetMouse().KeyDown:Connect(function(key)
+        if not figureNew.Parent then return end
+        if key == "r" then
+            local randomRoar = math.random(1, 2)
+            if randomRoar == 1 then
+                figureNew.Main.SoundRoar1.PlaybackSpeed = math.random(100, 120) / 100
+                figureNew.Main.SoundRoar1:Play()
+            else
+                figureNew.Main.SoundRoar2.PlaybackSpeed = math.random(100, 120) / 100
+                figureNew.Main.SoundRoar2:Play()
+            end
+        end
+    end)
+end
+
+-- RUSH
+local function transformIntoRush()
+    if _G.TransformedIntoAnyMorph then return end
+    _G.TransformedIntoAnyMorph = true
+    local figureNew = trackMorphModel(game:GetObjects("rbxassetid://100327482330650")[1])
+    if not figureNew then
+        _G.TransformedIntoAnyMorph = false
+        return
+    end
+    figureNew.Parent = workspace
+    local testingPlace = (game.GameId == 6627207668)
+    if testingPlace then
+        for _, Sounds in pairs(figureNew.Main.Sounds["test game"]:GetChildren()) do
+            Sounds:Clone().Parent = figureNew.Main
+        end
+    else
+        for _, Sounds in pairs(figureNew.Main.Sounds["DOORS"]:GetChildren()) do
+            Sounds:Clone().Parent = figureNew.Main
+        end
+    end
+    figureNew.Main.Sounds:Destroy()
+    figureNew.Main.Footsteps:Play()
+    figureNew.Main.PlaySound:Play()
+    
+    local renderConn
+    renderConn = RunService.RenderStepped:Connect(function()
+        if not figureNew.Parent or not _G.TransformedIntoAnyMorph then
+            renderConn:Disconnect()
+            return
+        end
+        local char = LocalPlayer.Character
+        local root = char and char:FindFirstChild("HumanoidRootPart")
+        if root then
+            figureNew:PivotTo(root.CFrame)
+        end
+        hideCharacterLocally(char)
+    end)
+    
+    LocalPlayer:GetMouse().KeyDown:Connect(function(key)
+        if not figureNew.Parent then return end
+        if key == "r" then
+            if figureNew.Main.Footsteps.IsPlaying then
+                figureNew.Main.Footsteps:Stop()
+            else
+                figureNew.Main.Footsteps:Play()
+            end
+            if figureNew.Main.PlaySound.IsPlaying then
+                figureNew.Main.PlaySound:Stop()
+            else
+                figureNew.Main.PlaySound:Play()
+            end
+        end
+    end)
+end
+
+-- AMBUSH
+local function transformIntoAmbush()
+    if _G.TransformedIntoAnyMorph then return end
+    _G.TransformedIntoAnyMorph = true
+    local figureNew = trackMorphModel(game:GetObjects("rbxassetid://98266611233960")[1])
+    if not figureNew then
+        _G.TransformedIntoAnyMorph = false
+        return
+    end
+    figureNew.Parent = workspace
+    figureNew.Main.Footsteps:Play()
+    figureNew.Main.PlaySound:Play()
+    
+    local renderConn
+    renderConn = RunService.RenderStepped:Connect(function()
+        if not figureNew.Parent or not _G.TransformedIntoAnyMorph then
+            renderConn:Disconnect()
+            return
+        end
+        local char = LocalPlayer.Character
+        local root = char and char:FindFirstChild("HumanoidRootPart")
+        if root then
+            figureNew:PivotTo(root.CFrame)
+        end
+        hideCharacterLocally(char)
+    end)
+    
+    LocalPlayer:GetMouse().KeyDown:Connect(function(key)
+        if not figureNew.Parent then return end
+        if key == "r" then
+            if figureNew.Main.Footsteps.IsPlaying then
+                figureNew.Main.Footsteps:Stop()
+            else
+                figureNew.Main.Footsteps:Play()
+            end
+            if figureNew.Main.PlaySound.IsPlaying then
+                figureNew.Main.PlaySound:Stop()
+            else
+                figureNew.Main.PlaySound:Play()
+            end
+        end
+    end)
+end
+
+-- SEEK
+local function transformIntoSeek()
+    if _G.TransformedIntoAnyMorph then return end
+    _G.TransformedIntoAnyMorph = true
+    local figureNew = trackMorphModel(game:GetObjects("rbxassetid://86341229891935")[1])
+    if not figureNew then
+        _G.TransformedIntoAnyMorph = false
+        return
+    end
+    figureNew.Parent = workspace
+    local testingPlace = (game.GameId == 6627207668)
+    local canWalk = true
+    local introCD = false
+    local IntroAnim, PipeSlimeAnim, WalkAnim
+    if testingPlace then
+        figureNew.SeekMusic.Intro.SoundId = "rbxassetid://138877504428539"
+        IntroAnim = figureNew.SeekRig.AnimationController.Animator:LoadAnimation(figureNew.AnimationsTest.minesintro)
+        WalkAnim = figureNew.SeekRig.AnimationController.Animator:LoadAnimation(figureNew.AnimationsTest.run)
+        PipeSlimeAnim = figureNew.FullPipe._SeekCutscene.AnimationController:LoadAnimation(figureNew.FullPipe._SeekCutscene.AnimationP)
+    else
+        IntroAnim = figureNew.SeekRig.AnimationController.Animator:LoadAnimation(figureNew.Animations.minesintro)
+        WalkAnim = figureNew.SeekRig.AnimationController.Animator:LoadAnimation(figureNew.Animations.run)
+        PipeSlimeAnim = figureNew.FullPipe._SeekCutscene.AnimationController:LoadAnimation(figureNew.FullPipe._SeekCutscene.Animation)
+    end
+    WalkAnim:Play()
+    WalkAnim:AdjustSpeed(0)
+    task.spawn(function()
+        while figureNew.Parent and _G.TransformedIntoAnyMorph do
+            task.wait()
+            if not canWalk then
+                figureNew.Figure.Footsteps:Stop()
+                figureNew.Figure.FootstepsFar:Stop()
+            end
+            if figureNew.Figure.Footsteps.IsPlaying and not figureNew.Figure.FootstepsFar.IsPlaying then
+                figureNew.Figure.FootstepsFar:Play()
+            end
+            if figureNew.Figure.FootstepsFar.IsPlaying and not figureNew.Figure.Footsteps.IsPlaying then
+                figureNew.Figure.Footsteps:Play()
+            end
+        end
+    end)
+    
+    local runningConn
+    runningConn = LocalPlayer.Character.Humanoid.Running:Connect(function(speed)
+        if not figureNew.Parent then
+            runningConn:Disconnect()
+            return
+        end
+        if speed >= 5 then
+            WalkAnim:AdjustSpeed(1)
+            if not figureNew.Figure.Footsteps.IsPlaying and canWalk then
+                figureNew.Figure.Footsteps:Play()
+                figureNew.Figure.FootstepsFar:Play()
+            end
+        else
+            WalkAnim:AdjustSpeed(0)
+            if figureNew.Figure.Footsteps.IsPlaying and canWalk then
+                figureNew.Figure.Footsteps:Stop()
+                figureNew.Figure.FootstepsFar:Stop()
+            end
+        end
+    end)
+    
+    local function playIntro()
+        if introCD then return end
+        introCD = true
+        canWalk = false
+        LocalPlayer.Character.HumanoidRootPart.Anchored = true
+        figureNew.FullPipe._SeekCutscene.SlimeDrip1.Transparency = 0
+        figureNew.FullPipe._SeekCutscene.SlimeDrip2.Transparency = 0
+        figureNew.FullPipe.GrateCap.Circle.Transparency = 0
+        figureNew.FullPipe.GrateCap.Grate.Transparency = 0
+        figureNew.FullPipe.FigurePipe.PipeBase.Transparency = 0
+        figureNew.SeekRig.SeekPuddle.Transparency = 0
+        task.spawn(function()
+            task.wait(8.11)
+            for _, Beam in pairs(figureNew.SeekRig:GetChildren()) do
+                if Beam:IsA("Beam") and Beam.Name == "StringCheese" then
+                    Beam.Enabled = true
+                end
+            end
+        end)
+        task.spawn(function()
+            task.wait(10.2)
+            for _, Beam in pairs(figureNew.SeekRig:GetChildren()) do
+                if Beam:IsA("Beam") and Beam.Name == "StringCheese" then
+                    Beam.Enabled = false
+                end
+            end
+        end)
+        IntroAnim:Play()
+        PipeSlimeAnim:Play()
+        figureNew.SeekMusic.Intro:Play()
+        task.wait(IntroAnim.Length - 2)
+        IntroAnim:Stop()
+        figureNew.FullPipe._SeekCutscene.SlimeDrip1.Transparency = 1
+        figureNew.FullPipe._SeekCutscene.SlimeDrip2.Transparency = 1
+        figureNew.FullPipe.GrateCap.Circle.Transparency = 1
+        figureNew.FullPipe.GrateCap.Grate.Transparency = 1
+        figureNew.FullPipe.FigurePipe.PipeBase.Transparency = 1
+        figureNew.SeekRig.SeekPuddle.Transparency = 1
+        canWalk = true
+        LocalPlayer.Character.HumanoidRootPart.Anchored = false
+        introCD = false
+    end
+    
+    local renderConn
+    renderConn = RunService.RenderStepped:Connect(function()
+        if not figureNew.Parent or not _G.TransformedIntoAnyMorph then
+            renderConn:Disconnect()
+            return
+        end
+        local char = LocalPlayer.Character
+        local root = char and char:FindFirstChild("HumanoidRootPart")
+        if root then
+            figureNew:PivotTo(root.CFrame)
+        end
+        hideCharacterLocally(char)
+    end)
+    
+    LocalPlayer:GetMouse().KeyDown:Connect(function(key)
+        if not figureNew.Parent then return end
+        if key == "r" then
+            playIntro()
+        elseif key == "t" then
+            figureNew.Figure.Scream:Play()
+        end
+    end)
+end
+
+-- GRUMBLE
+local function transformIntoGrumble()
+    if _G.TransformedIntoAnyMorph == true then return end
+    _G.TransformedIntoAnyMorph = true
+    local success, result = pcall(function()
+        return game:GetObjects("rbxassetid://72896977745894")
+    end)
+    if not success or not result or not result[1] then
+        warn("Grumble: Failed to load asset 72896977745894.")
+        _G.TransformedIntoAnyMorph = false
+        return
+    end
+    local grumble = trackMorphModel(result[1])
+    if not grumble:IsA("Model") then
+        warn("Grumble asset is not a Model.")
+        grumble:Destroy()
+        _G.TransformedIntoAnyMorph = false
+        return
+    end
+    grumble.Parent = workspace
+    pcall(function()
+        grumble:ScaleTo(0.3)
+    end)
+    
+    local character = LocalPlayer.Character
+    local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+    local root = character and character:FindFirstChild("HumanoidRootPart")
+    if not character or not humanoid or not root then
+        warn("Grumble: Your character is not ready.")
+        resetMorph()
+        return
+    end
+    
+    local controller = grumble:FindFirstChildWhichIsA("AnimationController", true)
+    local grumbleHumanoid = grumble:FindFirstChildWhichIsA("Humanoid", true)
+    local animator
+    if controller then
+        animator = controller:FindFirstChildOfClass("Animator")
+        if not animator then
+            animator = Instance.new("Animator")
+            animator.Parent = controller
+        end
+    elseif grumbleHumanoid then
+        animator = grumbleHumanoid:FindFirstChildOfClass("Animator")
+        if not animator then
+            animator = Instance.new("Animator")
+            animator.Parent = grumbleHumanoid
+        end
+    end
+    if not animator then
+        warn("Grumble: No AnimationController/Humanoid was found in the asset.")
+        resetMorph()
+        return
+    end
+    
+    local function loadGrumbleTrack(animationId, name, priority)
+        local animation = Instance.new("Animation")
+        animation.Name = name
+        animation.AnimationId = "rbxassetid://" .. animationId
+        animation.Parent = grumble
+        local ok, track = pcall(function()
+            return animator:LoadAnimation(animation)
+        end)
+        if not ok or not track then
+            animation:Destroy()
+            warn("Grumble: Could not load " .. name)
+            return nil
+        end
+        track.Looped = true
+        track.Priority = priority
+        return track
+    end
+    
+    local crawlTrack = loadGrumbleTrack("18687934629", "GrumbleCrawl", Enum.AnimationPriority.Movement)
+    if not crawlTrack then
+        resetMorph()
+        return
+    end
+    local blinkTrack = loadGrumbleTrack("18967355407", "GrumbleBlink", Enum.AnimationPriority.Action)
+    
+    local function setMoving(shouldMove, speed)
+        if not grumble.Parent then return end
+        if not crawlTrack.IsPlaying then
+            crawlTrack:Play(0.25)
+        end
+        if shouldMove then
+            crawlTrack:AdjustSpeed(math.clamp((speed or 8) / 8, 0.7, 1.9))
+        else
+            crawlTrack:AdjustSpeed(0.12)
+        end
+    end
+    
+    crawlTrack:Play(0)
+    crawlTrack:AdjustSpeed(0.12)
+    if blinkTrack then
+        blinkTrack:Play(0.3)
+    end
+    
+    local renderConnection
+    renderConnection = RunService.RenderStepped:Connect(function()
+        if not grumble.Parent or not _G.TransformedIntoAnyMorph then
+            renderConnection:Disconnect()
+            return
+        end
+        character = LocalPlayer.Character
+        root = character and character:FindFirstChild("HumanoidRootPart")
+        if root then
+            grumble:PivotTo(root.CFrame)
+        end
+        hideCharacterLocally(LocalPlayer.Character)
+    end)
+    
+    local runningConnection
+    runningConnection = humanoid.Running:Connect(function(speed)
+        if not grumble.Parent or not _G.TransformedIntoAnyMorph then
+            runningConnection:Disconnect()
+            return
+        end
+        setMoving(speed >= 1, speed)
+    end)
+end
+
+-- GROUNDSKEEPER
+local function transformIntoGroundskeeper()
+    if _G.TransformedIntoAnyMorph == true then return end
+    _G.TransformedIntoAnyMorph = true
+    local success, result = pcall(function()
+        return game:GetObjects("rbxassetid://105352265307130")
+    end)
+    if not success or not result or not result[1] then
+        warn("Groundskeeper: Failed to load asset 105352265307130")
+        _G.TransformedIntoAnyMorph = false
+        return
+    end
+    local groundskeeper = trackMorphModel(result[1])
+    if not groundskeeper:IsA("Model") then
+        warn("Groundskeeper asset is not a Model")
+        groundskeeper:Destroy()
+        _G.TransformedIntoAnyMorph = false
+        return
+    end
+    groundskeeper.Parent = workspace
+    pcall(function()
+        groundskeeper:ScaleTo(0.85)
+    end)
+    
+    local character = LocalPlayer.Character
+    local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+    local root = character and character:FindFirstChild("HumanoidRootPart")
+    if not character or not humanoid or not root then
+        warn("Groundskeeper: Character not ready")
+        resetMorph()
+        return
+    end
+    
+    local controller = groundskeeper:FindFirstChildWhichIsA("AnimationController", true)
+    local gkHumanoid = groundskeeper:FindFirstChildWhichIsA("Humanoid", true)
+    local animator
+    if controller then
+        animator = controller:FindFirstChildOfClass("Animator") or Instance.new("Animator", controller)
+    elseif gkHumanoid then
+        animator = gkHumanoid:FindFirstChildOfClass("Animator") or Instance.new("Animator", gkHumanoid)
+    end
+    if not animator then
+        warn("Groundskeeper: No Animator found")
+        resetMorph()
+        return
+    end
+    
+    local function loadTrack(anim, priority)
+        local ok, track = pcall(function()
+            return animator:LoadAnimation(anim)
+        end)
+        if ok and track then
+            track.Looped = true
+            track.Priority = priority or Enum.AnimationPriority.Movement
+            return track
+        end
+        return nil
+    end
+    
+    local idleTrack, walkTrack
+    for _, item in ipairs(groundskeeper:GetDescendants()) do
+        if item:IsA("Animation") then
+            local name = string.lower(item.Name)
+            if (name:find("idle") or name:find("stand")) and not idleTrack then
+                idleTrack = loadTrack(item, Enum.AnimationPriority.Idle)
+            elseif (name:find("walk") or name:find("run") or name:find("move")) and not walkTrack then
+                walkTrack = loadTrack(item, Enum.AnimationPriority.Movement)
+            end
+        end
+    end
+    
+    playAllSoundsInModel(groundskeeper)
+    
+    local function setMoving(shouldMove, speed)
+        if not groundskeeper.Parent then return end
+        if shouldMove then
+            if idleTrack and idleTrack.IsPlaying then idleTrack:Stop(0.25) end
+            if walkTrack then
+                if not walkTrack.IsPlaying then walkTrack:Play(0.25) end
+                walkTrack:AdjustSpeed(math.clamp((speed or 8) / 10, 0.7, 1.6))
+            end
+        else
+            if walkTrack and walkTrack.IsPlaying then walkTrack:Stop(0.25) end
+            if idleTrack and not idleTrack.IsPlaying then
+                idleTrack:Play(0.25)
+            end
+        end
+    end
+    
+    if idleTrack then
+        idleTrack:Play(0.3)
+    elseif walkTrack then
+        walkTrack:Play(0)
+        walkTrack:AdjustSpeed(0.1)
+    end
+    
+    local renderConnection
+    renderConnection = RunService.RenderStepped:Connect(function()
+        if not groundskeeper.Parent or not _G.TransformedIntoAnyMorph then
+            renderConnection:Disconnect()
+            return
+        end
+        character = LocalPlayer.Character
+        root = character and character:FindFirstChild("HumanoidRootPart")
+        if root then
+            groundskeeper:PivotTo(root.CFrame * CFrame.new(0, 2.4, 0))
+        end
+        hideCharacterLocally(LocalPlayer.Character)
+    end)
+    
+    local runningConnection
+    runningConnection = humanoid.Running:Connect(function(speed)
+        if not groundskeeper.Parent or not _G.TransformedIntoAnyMorph then
+            runningConnection:Disconnect()
+            return
+        end
+        setMoving(speed >= 1, speed)
+    end)
+end
+
+-- SCREECH
+local function transformIntoScreech()
+    if _G.TransformedIntoAnyMorph then return end
+    _G.TransformedIntoAnyMorph = true
+    local success, result = pcall(function()
+        return game:GetService("ReplicatedStorage").Entities.Screech:Clone()
+    end)
+    if not success or not result then
+        warn("Screech: Failed to load from ReplicatedStorage")
+        _G.TransformedIntoAnyMorph = false
+        return
+    end
+    local morph = trackMorphModel(result)
+    morph.Name = "morph"
+    morph.Parent = workspace
+    local IdleAnim = morph.AnimationController:LoadAnimation(morph.Animations.Idle)
+    IdleAnim:Play()
+    playAllSoundsInModel(morph)
+    
+    local renderConn
+    renderConn = RunService.RenderStepped:Connect(function()
+        if not morph.Parent or not _G.TransformedIntoAnyMorph then
+            renderConn:Disconnect()
+            return
+        end
+        local char = LocalPlayer.Character
+        local root = char and char:FindFirstChild("HumanoidRootPart")
+        if root then
+            morph:PivotTo(root.CFrame * CFrame.new(0, 1, 0))
+        end
+        hideCharacterLocally(char)
+    end)
+end
+
+-- SIMPLE MORPHS (Eyes, Halt, etc)
+local function simpleMorph(tag, assetId, anchorName, offsetY, extra)
+    if _G.TransformedIntoAnyMorph then return end
+    _G.TransformedIntoAnyMorph = true
+    local success, result = pcall(function()
+        return game:GetObjects("rbxassetid://" .. assetId)[1]
+    end)
+    if not success or not result then
+        warn(tag .. ": Failed to load asset " .. assetId)
+        _G.TransformedIntoAnyMorph = false
+        return
+    end
+    local morph = trackMorphModel(result)
+    morph.Parent = workspace
+    local mainPart = (anchorName and morph:FindFirstChild(anchorName))
+    or morph.PrimaryPart
+    or morph:FindFirstChildWhichIsA("BasePart", true)
+    if mainPart and mainPart:IsA("BasePart") then
+        mainPart.Anchored = true
+        mainPart.CanCollide = false
+    end
+    if extra then extra(morph) end
+    playAllSoundsInModel(morph)
+    
+    local renderConn
+    renderConn = RunService.RenderStepped:Connect(function()
+        if not morph.Parent or not _G.TransformedIntoAnyMorph then
+            renderConn:Disconnect()
+            return
+        end
+        local char = LocalPlayer.Character
+        local root = char and char:FindFirstChild("HumanoidRootPart")
+        if root then
+            morph:PivotTo(root.CFrame * CFrame.new(0, offsetY, 0))
+        end
+        hideCharacterLocally(char)
+    end)
+end
+
+local function transformIntoEyes()
+    simpleMorph("Eyes", "12457741170", "Core", 1)
+end
+
+local function transformIntoHalt()
+    simpleMorph("Halt", "12457734969", "Shade", 0.3, function(morph)
+        if morph:FindFirstChild("Shade") then
+            game:GetService("ReplicatedStorage").Entities.Halt.Shade.Transparency = 1
+        end
+    end)
+end
+
+-- ==========================================
+-- SECTION 4: NETWORKING & INPUT HANDLING
+-- ==========================================
+
+-- List of available morphs
+local morphFunctions = {
+    ["Figure"] = transformIntoFigure,
+    ["Gloombat"] = transformIntoGloombat,
+    ["Rush"] = transformIntoRush,
+    ["Ambush"] = transformIntoAmbush,
+    ["Seek"] = transformIntoSeek,
+    ["Grumble"] = transformIntoGrumble,
+    ["Groundskeeper"] = transformIntoGroundskeeper,
+    ["Screech"] = transformIntoScreech,
+    ["Eyes"] = transformIntoEyes,
+    ["Halt"] = transformIntoHalt
+}
+
+-- Handle Local Input
+LocalPlayer:GetMouse().KeyDown:Connect(function(key)
+    if key == "r" then
+        -- If we are already transformed, try to cycle or just trigger the current one
+        -- For simplicity, let's assume 'R' triggers the last used morph or a default
+        -- Here we will just trigger Figure for demo, but you can expand this
+        if not _G.TransformedIntoAnyMorph then
+            transformIntoFigure()
+            -- Send to server
+            MorphEvent:FireServer("Figure")
+        else
+            -- Optional: Reset on R if already transformed? 
+            -- Or cycle through morphs. Let's just reset for now if pressed again
+            resetMorph()
+            MorphEvent:FireServer("Reset")
+        end
+    end
+end)
+
+-- Listen for other players transforming
+MorphEvent.OnClientEvent:Connect(function(playerName, morphType)
+    if playerName == LocalPlayer.Name then return end
+    
+    -- Find the player object
+    local targetPlayer = Players:FindFirstChild(playerName)
+    if not targetPlayer then return end
+    
+    local targetChar = targetPlayer.Character
+    if not targetChar then return end
+    
+    -- Spawn the morph for the OTHER player
+    if morphType == "Reset" then
+        -- Remove their morph
+        local morphModel = targetChar:FindFirstChild("MorphModel_" .. playerName)
+        if morphModel then
+            morphModel:Destroy()
+        end
+        return
+    end
+    
+    local func = morphFunctions[morphType]
+    if func then
+        -- We need to run the morph logic but target the other player
+        -- This is tricky because the original functions target LocalPlayer
+        -- So we clone the model and pivot it to the other player
+        
+        local morphModel = nil
+        
+        if morphType == "Figure" then
+            morphModel = trackMorphModel(game:GetObjects("rbxassetid://116871580020558")[1])
+        elseif morphType == "Gloombat" then
+            morphModel = trackMorphModel(game:GetObjects("rbxassetid://72951473062980")[1])
+        elseif morphType == "Rush" then
+            morphModel = trackMorphModel(game:GetObjects("rbxassetid://100327482330650")[1])
+        elseif morphType == "Ambush" then
+            morphModel = trackMorphModel(game:GetObjects("rbxassetid://98266611233960")[1])
+        elseif morphType == "Seek" then
+            morphModel = trackMorphModel(game:GetObjects("rbxassetid://86341229891935")[1])
+        elseif morphType == "Grumble" then
+            local success, result = pcall(function() return game:GetObjects("rbxassetid://72896977745894") end)
+            if success and result and result[1] then
+                morphModel = trackMorphModel(result[1])
+            end
+        elseif morphType == "Groundskeeper" then
+            local success, result = pcall(function() return game:GetObjects("rbxassetid://105352265307130") end)
+            if success and result and result[1] then
+                morphModel = trackMorphModel(result[1])
+            end
+        elseif morphType == "Screech" then
+            local success, result = pcall(function() return game:GetService("ReplicatedStorage").Entities.Screech:Clone() end)
+            if success and result then
+                morphModel = trackMorphModel(result)
+            end
+        elseif morphType == "Eyes" then
+            morphModel = trackMorphModel(game:GetObjects("rbxassetid://12457741170")[1])
+        elseif morphType == "Halt" then
+            morphModel = trackMorphModel(game:GetObjects("rbxassetid://12457734969")[1])
+        end
+        
+        if morphModel then
+            morphModel.Name = "MorphModel_" .. playerName
+            morphModel.Parent = workspace
+            
+            -- Pivot to the other player
+            local renderConn = RunService.RenderStepped:Connect(function()
+                if not morphModel.Parent then
+                    renderConn:Disconnect()
+                    return
+                end
+                local otherChar = targetPlayer.Character
+                local otherRoot = otherChar and otherChar:FindFirstChild("HumanoidRootPart")
+                if otherRoot then
+                    morphModel:PivotTo(otherRoot.CFrame)
+                end
+            end)
+            
+            -- Hide the other player's character locally
+            local hideConn = RunService.RenderStepped:Connect(function()
+                if not morphModel.Parent then
+                    hideConn:Disconnect()
+                    return
+                end
+                hideCharacterLocally(targetChar)
+            end)
+        end
+    end
+end)
+
