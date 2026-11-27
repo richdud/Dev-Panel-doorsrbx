@@ -1381,8 +1381,8 @@ do
   MorphActions.Screech = transformIntoScreech
   MorphActions.Eyes = transformIntoEyes
   MorphActions.Halt = transformIntoHalt
-  MorphActions["A-60"] = transformIntoA60
-  MorphActions["A-120"] = transformIntoA120
+  MorphActions["A-60 (BUGGED/LOUD SOUND)"] = transformIntoA60
+  MorphActions["A-120 (BUGGED/LOUD SOUND)"] = transformIntoA120
   MorphActions.Dread = transformIntoDread
   MorphActions.Honcho = transformIntoHoncho
   MorphActions.Reset = resetMorph
